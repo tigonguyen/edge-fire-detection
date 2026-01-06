@@ -1,0 +1,87 @@
+# Dataset files (exclude all data directories)
+data/
+model/data/
+*.jpg
+*.jpeg
+*.png
+*.gif
+*.bmp
+*.tiff
+*.webp
+# But keep example/demo images in root
+!fireForrest.jpg
+
+# Model checkpoints and weights
+*.pth
+*.pt
+*.ckpt
+*.h5
+*.pb
+*.onnx
+*.tflite
+*.weights
+checkpoints/
+exports/
+logs/
+runs/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Virtual Environment
+venv/
+env/
+ENV/
+.venv
+
+# Jupyter Notebook
+.ipynb_checkpoints
+*.ipynb
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Environment variables
+.env
+.env.local
+kaggle.json
+
+# TensorBoard
+tensorboard/
+tb_logs/
+
+# Temporary files
+*.tmp
+*.temp
+*.log
+*.cache
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Downloaded datasets (Kaggle, etc)
+*.zip
+*.tar
+*.tar.gz
+*.rar
+
