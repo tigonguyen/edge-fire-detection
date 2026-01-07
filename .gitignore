@@ -11,6 +11,16 @@ model/data/
 # But keep example/demo images in root
 !fireForrest.jpg
 
+# Video files and extracted frames
+*.mp4
+*.avi
+*.mov
+*.mkv
+*.flv
+*.wmv
+video_frames/
+video_frames_*/
+
 # Model checkpoints and weights
 *.pth
 *.pt
