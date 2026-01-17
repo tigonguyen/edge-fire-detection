@@ -167,18 +167,28 @@ edge-fire-detection/
 ├── README.md                      # This file
 ├── requirements.txt               # Python dependencies
 ├── test_model.py                  # Model loading and testing script
+├── test_video_frames.py          # Video frame testing script
+├── export_torchscript.py         # Export model to TorchScript for C++
 │
-├── models/                        # Model architecture
-│   ├── efficientnet_fire.py      # EfficientNet-Lite fire classifier
-│   └── model_config.py           # Model hyperparameters
+├── model/                        # Model training
+│   ├── train_fire_detection.py  # Training script
+│   ├── test_trained_model.py    # Test trained model
+│   ├── organize_dataset.py      # Dataset organization
+│   └── data/                    # Dataset directory
 │
-├── training/                      # Training pipeline
-│   ├── train.py                  # Training script
-│   ├── dataset.py                # Fire/smoke dataset loader
-│   ├── quantize.py               # INT8 quantization
-│   └── export_onnx.py            # ONNX/TFLite export
+├── app/                         # C++ Application (Video Stream Processing)
+│   ├── README.md                # C++ app documentation
+│   ├── QUICKSTART.md            # Quick start guide
+│   ├── CMakeLists.txt           # Build configuration
+│   ├── build.sh                 # Build script
+│   ├── include/
+│   │   └── fire_detector.h      # FireDetector class header
+│   ├── src/
+│   │   ├── main.cpp             # Main application
+│   │   └── fire_detector.cpp   # Detection implementation
+│   └── build/                   # Build output directory
 │
-├── edge/                         # ESP32 edge device code
+├── edge/                         # ESP32 edge device code (planned)
 │   ├── main/                     # ESP-IDF main component
 │   │   ├── main.c                # Main application
 │   │   ├── camera_handler.c      # Camera capture
@@ -187,13 +197,13 @@ edge-fire-detection/
 │   ├── components/               # Custom ESP-IDF components
 │   └── README.md                 # ESP32 setup guide
 │
-├── ground_station/               # Ground station software
+├── ground_station/               # Ground station software (planned)
 │   ├── receiver.py               # MQTT alert receiver
 │   ├── relay.py                  # Cloud relay service
 │   ├── visualizer.py             # Real-time map viewer
 │   └── config.yaml               # Ground station configuration
 │
-├── cloud/                        # Cloud platform
+├── cloud/                        # Cloud platform (planned)
 │   ├── api/                      # REST API server
 │   │   ├── app.py                # FastAPI application
 │   │   ├── models.py             # Database models
@@ -204,7 +214,7 @@ edge-fire-detection/
 │   └── notification/             # Push notification service
 │       └── fcm_sender.py         # Firebase Cloud Messaging
 │
-└── evaluation/                   # Performance evaluation
+└── evaluation/                   # Performance evaluation (planned)
     ├── benchmark_latency.py      # Latency measurement
     ├── bandwidth_analysis.py     # Bandwidth comparison
     └── accuracy_metrics.py       # Precision/Recall/F1
@@ -424,7 +434,9 @@ For ESP32 deployment, the model will need to be:
 
 ### 8. Video Frame Testing
 
-Test the model on video frames:
+#### Python Version (Quick Testing)
+
+Test the model on video frames using Python:
 
 ```bash
 # Extract frames from video and run inference
@@ -436,6 +448,37 @@ This script:
 - Runs inference on each frame
 - Displays results with confidence scores
 - Useful for testing on drone footage or surveillance videos
+
+#### C++ Application (Production-Ready)
+
+For real-time video stream processing with better performance, use the C++ application:
+
+```bash
+# Step 1: Export model to TorchScript format
+python export_torchscript.py
+
+# Step 2: Build C++ application
+cd app
+./build.sh
+
+# Step 3: Run fire detection on video stream
+cd build
+./fire_detector \
+  --video "../../Forest Fire with Drone Support.mp4" \
+  --model ../../fire_detection_scripted.pt \
+  --threshold 0.8 \
+  --save
+```
+
+**Features**:
+- 🎥 Real-time video processing with visual overlays
+- ⚡ GPU acceleration support (CUDA)
+- 💾 Save processed output video
+- 📊 Live performance statistics
+- 🎮 Interactive controls (pause/resume)
+- 🔥 Fire alerts with confidence scores
+
+See [`app/README.md`](app/README.md) for detailed documentation or [`app/QUICKSTART.md`](app/QUICKSTART.md) for a quick start guide.
 
 ### 9. ESP32 Setup
 
