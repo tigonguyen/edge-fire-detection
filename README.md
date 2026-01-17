@@ -241,51 +241,203 @@ This will download EfficientNet-Lite0, run inference on a sample image, and veri
 
 ### 4. Dataset Preparation
 
-Download and prepare fire detection datasets:
+The project uses a fire detection dataset organized into training and validation sets.
 
 ```bash
-# Download FIRE dataset
-python training/download_datasets.py --dataset fire
-
-# Download FLAME dataset (aerial wildfire)
-python training/download_datasets.py --dataset flame
-
-# Prepare training/validation split
-python training/prepare_dataset.py --split 0.8
+# Organize the dataset (if you have raw images)
+python model/organize_dataset.py
 ```
 
-**Datasets Used**:
-- **FIRE Dataset**: 755 fire images, 244 non-fire images
-- **FLAME Dataset**: Aerial wildfire images from drones
-- **Foggy Fire Dataset**: Low-visibility fire scenarios
-- **Custom Smoke Dataset**: Smoke-only detection training
+This script will:
+- Split images into train/val sets (80/20 by default)
+- Organize into proper directory structure:
+  ```
+  model/data/fire_dataset/
+  ├── train/
+  │   ├── fire/       # Fire images
+  │   └── normal/     # Non-fire images
+  └── val/
+      ├── fire/
+      └── normal/
+  ```
 
-Combined dataset: ~5,000+ images with diverse scenarios (daylight, low-light, fog, false positives).
+**Dataset Structure Expected**:
+Raw images should be placed in:
+```
+model/data/raw/fire_dataset/
+├── fire_images/     # All fire images
+└── non_fire_images/ # All non-fire images
+```
 
 ### 5. Model Training
 
-```bash
-# Train EfficientNet-Lite0 on fire detection
-python training/train.py \
-  --model efficientnet_lite0 \
-  --epochs 100 \
-  --batch-size 32 \
-  --lr 0.001 \
-  --img-size 224
+The training uses **standard transfer learning** (NOT knowledge distillation) with the following approach:
 
-# Quantize to INT8
-python training/quantize.py \
-  --model checkpoints/best_model.pth \
-  --output models/fire_detection_int8.tflite
+#### Training Method
+- **Base Model**: EfficientNet-B0 pretrained on ImageNet
+- **Fine-tuning Strategy**: Full model fine-tuning (all parameters trainable)
+- **Loss Function**: Cross-Entropy Loss
+- **Optimizer**: Adam with weight decay (1e-4)
+- **Learning Rate Scheduler**: Cosine Annealing
+- **No Distillation**: This is a single-model training approach, not teacher-student distillation
 
-# Export to TensorFlow Lite for ESP32
-python training/export_onnx.py \
-  --model checkpoints/best_model.pth \
-  --format tflite \
-  --quantize int8
+#### Training Configuration
+
+Default hyperparameters in `model/train_fire_detection.py`:
+```python
+DATA_DIR = 'model/data/fire_dataset'
+BATCH_SIZE = 32
+NUM_EPOCHS = 20
+LEARNING_RATE = 0.001
+NUM_CLASSES = 2  # fire, normal
 ```
 
-### 6. ESP32 Setup
+#### Run Training
+
+```bash
+# Activate virtual environment
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+
+# Start training
+python model/train_fire_detection.py
+```
+
+#### Training Process
+
+1. **Data Loading**:
+   - Training images: Data augmentation applied (random crop, flip, rotation, color jitter)
+   - Validation images: Only resize and center crop
+   - Image size: 224x224 RGB
+   - Normalization: ImageNet mean/std values
+
+2. **Model Architecture**:
+   - EfficientNet-B0 from timm library
+   - Pretrained weights loaded from ImageNet
+   - Final classifier replaced for 2 classes (fire/normal)
+   - Total parameters: ~5.3M
+   - Model size: ~20 MB (FP32)
+
+3. **Training Loop**:
+   - Each epoch trains on all training batches
+   - Validation performed after each epoch
+   - Learning rate adjusted with cosine annealing
+   - Best model saved based on validation accuracy
+   - Progress bars show loss and accuracy in real-time
+
+4. **Output**:
+   - Best model saved to: `fire_detection_best.pth`
+   - Checkpoint includes:
+     - Model state dict
+     - Optimizer state
+     - Validation accuracy and loss
+     - Class names and number of classes
+     - Epoch number
+
+#### Training Output Example
+
+```
+============================================================
+🔥 Fire Detection Model Training
+============================================================
+
+📱 Using device: cuda
+   GPU: NVIDIA GeForce RTX 3080
+
+📦 Loading dataset from model/data/fire_dataset...
+Train dataset size: 800
+Val dataset size: 200
+Classes: ['fire', 'normal']
+
+📊 Dataset Info:
+   Training batches: 25
+   Validation batches: 7
+   Batch size: 32
+   Classes: ['fire', 'normal']
+
+🤖 Creating EfficientNet-B0 model...
+   Total parameters: 5,288,548
+   Trainable parameters: 5,288,548
+   Model size (FP32): ~20.16 MB
+
+============================================================
+🚀 Starting training for 20 epochs...
+============================================================
+
+Epoch 1 [Train]: 100%|████████| 25/25 [00:15<00:00]
+Epoch 1 [Val]:   100%|████████| 7/7 [00:02<00:00]
+
+────────────────────────────────────────────────────────────
+📊 Epoch 1/20 Results (Time: 18.3s)
+────────────────────────────────────────────────────────────
+  Train Loss: 0.3245 | Train Acc: 86.50%
+  Val Loss:   0.2156 | Val Acc:   91.00%
+  Class Accuracy:
+    fire: 89.50%
+    normal: 92.50%
+  Learning Rate: 0.000988
+  ✅ Saved best model (val_acc: 91.00%)
+────────────────────────────────────────────────────────────
+```
+
+#### Customizing Training
+
+To modify training parameters, edit `model/train_fire_detection.py`:
+
+```python
+# Configuration section (lines 15-20)
+DATA_DIR = 'model/data/fire_dataset'  # Dataset location
+BATCH_SIZE = 32                        # Batch size (adjust for GPU memory)
+NUM_EPOCHS = 20                        # Number of training epochs
+LEARNING_RATE = 0.001                  # Initial learning rate
+NUM_CLASSES = 2                        # Number of classes
+```
+
+**Tips**:
+- Increase `NUM_EPOCHS` to 50-100 for better convergence
+- Reduce `BATCH_SIZE` if you encounter out-of-memory errors
+- Adjust `LEARNING_RATE` if training is unstable (try 0.0001)
+- Training takes ~20-30 minutes on GPU, 2-3 hours on CPU
+
+### 6. Model Testing
+
+After training, test the model on individual images:
+
+```bash
+# Test on a single image
+python model/test_trained_model.py
+```
+
+This will load the trained model and run inference on test images, displaying:
+- Predicted class (fire/normal)
+- Confidence score
+- Class probabilities
+
+### 7. Model Quantization & Export
+
+*Note: Quantization scripts for INT8 conversion and TFLite export are planned for future implementation.*
+
+For ESP32 deployment, the model will need to be:
+1. Exported to ONNX format
+2. Converted to TensorFlow Lite
+3. Quantized to INT8 for optimal performance
+4. Integrated with TensorFlow Lite Micro
+
+### 8. Video Frame Testing
+
+Test the model on video frames:
+
+```bash
+# Extract frames from video and run inference
+python test_video_frames.py
+```
+
+This script:
+- Extracts frames from video files
+- Runs inference on each frame
+- Displays results with confidence scores
+- Useful for testing on drone footage or surveillance videos
+
+### 9. ESP32 Setup
 
 See detailed instructions in [`edge/README.md`](edge/README.md).
 
@@ -304,7 +456,7 @@ idf.py build
 idf.py -p /dev/ttyUSB0 flash monitor
 ```
 
-### 7. Ground Station Setup
+### 10. Ground Station Setup
 
 ```bash
 cd ground_station
@@ -317,7 +469,7 @@ nano config.yaml  # Edit configuration
 python receiver.py
 ```
 
-### 8. Cloud Platform Setup
+### 11. Cloud Platform Setup
 
 ```bash
 cd cloud/api
@@ -480,6 +632,27 @@ A complete demonstration scenario showcasing the system's capabilities:
 - Historical trends and analytics
 
 ## Technical Stack
+
+### Model Training Approach
+
+**Important**: This project uses **standard transfer learning** (fine-tuning), NOT knowledge distillation.
+
+**Training Method**:
+- **Approach**: Transfer learning with full fine-tuning
+- **Pre-trained Model**: EfficientNet-B0 from ImageNet
+- **Strategy**: All layers trainable from the start
+- **Loss**: Standard Cross-Entropy Loss (no distillation loss)
+- **Why not distillation?**: 
+  - EfficientNet-B0 is already optimized for edge devices
+  - Direct fine-tuning on fire detection data is more effective for this specialized task
+  - Model size (~5 MB INT8) already fits ESP32-S3 constraints
+  - Distillation is typically used to compress larger models (ResNet50 → MobileNet), but we start with an efficient architecture
+
+**If you wanted to use distillation**, you would:
+1. Train a larger teacher model (e.g., EfficientNet-B3 or ResNet50)
+2. Use the teacher's soft predictions to train the student (EfficientNet-B0)
+3. Combine distillation loss with hard label loss
+4. However, for this project, direct training achieves excellent results
 
 ### Training & Model Development
 - **Framework**: PyTorch 2.0+
