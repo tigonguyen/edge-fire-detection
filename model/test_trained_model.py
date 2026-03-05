@@ -18,8 +18,9 @@ def load_trained_model(checkpoint_path='fire_detection_best.pth'):
     class_names = checkpoint.get('class_names', ['fire', 'normal'])
     num_classes = len(class_names)
     
-    # Create model with same architecture
-    model = timm.create_model('efficientnet_b0', pretrained=False, num_classes=num_classes)
+    # Create model with same architecture (Lite0 for edge)
+    model_name = checkpoint.get('model_name', 'efficientnet_lite0')
+    model = timm.create_model(model_name, pretrained=False, num_classes=num_classes)
     model.load_state_dict(checkpoint['model_state_dict'])
     model.eval()
     

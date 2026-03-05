@@ -1,5 +1,6 @@
 """
-Fine-tune EfficientNet-B0 on fire detection dataset (2 classes: fire and normal).
+Train a large teacher model (EfficientNet-B3) for knowledge distillation.
+This model prioritizes accuracy over size.
 """
 
 import torch
@@ -11,33 +12,38 @@ from pathlib import Path
 from tqdm import tqdm
 import timm
 import time
+import sys
+
+# Add parent directory to path to reuse data loading logic
+sys.path.append(str(Path(__file__).parent.parent.parent))
 
 # Configuration
 DATA_DIR = 'model/data/fire_dataset'
-BATCH_SIZE = 32
-NUM_EPOCHS = 20
-LEARNING_RATE = 0.001
+BATCH_SIZE = 16  # Smaller batch for larger model
+NUM_EPOCHS = 30  # More epochs for teacher
+LEARNING_RATE = 0.0005  # Lower LR for better convergence
 NUM_CLASSES = 2  # fire, normal
 
-def get_data_loaders(data_dir, batch_size=32):
+def get_data_loaders(data_dir, batch_size=16):
     """Create train and validation data loaders."""
     
     # Data augmentation for training
     train_transform = transforms.Compose([
-        transforms.Resize(256),
-        transforms.RandomCrop(224),
+        transforms.Resize(320),  # Larger input for teacher
+        transforms.RandomCrop(300),
         transforms.RandomHorizontalFlip(),
-        transforms.RandomRotation(15),
-        transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2),
+        transforms.RandomRotation(20),
+        transforms.ColorJitter(brightness=0.3, contrast=0.3, saturation=0.3),
+        transforms.RandomAffine(degrees=0, translate=(0.1, 0.1)),
         transforms.ToTensor(),
         transforms.Normalize(mean=[0.485, 0.456, 0.406], 
                            std=[0.229, 0.224, 0.225])
     ])
     
-    # No augmentation for validation
+    # Validation transform
     val_transform = transforms.Compose([
-        transforms.Resize(256),
-        transforms.CenterCrop(224),
+        transforms.Resize(320),
+        transforms.CenterCrop(300),
         transforms.ToTensor(),
         transforms.Normalize(mean=[0.485, 0.456, 0.406], 
                            std=[0.229, 0.224, 0.225])
@@ -57,7 +63,6 @@ def get_data_loaders(data_dir, batch_size=32):
     print(f"Train dataset size: {len(train_dataset)}")
     print(f"Val dataset size: {len(val_dataset)}")
     print(f"Classes: {train_dataset.classes}")
-    print(f"Class to index: {train_dataset.class_to_idx}")
     
     # Create data loaders
     train_loader = DataLoader(
@@ -122,7 +127,7 @@ def validate(model, val_loader, criterion, device, epoch):
     total = 0
     
     # Track per-class accuracy
-    class_correct = [0, 0]  # [normal, fire]
+    class_correct = [0, 0]
     class_total = [0, 0]
     
     with torch.no_grad():
@@ -154,7 +159,7 @@ def validate(model, val_loader, criterion, device, epoch):
 
 def main():
     print("="*60)
-    print("🔥 Fire Detection Model Training")
+    print("🎓 Teacher Model Training (EfficientNet-B3)")
     print("="*60)
     
     # Check if dataset exists
@@ -168,6 +173,7 @@ def main():
     print(f"\n📱 Using device: {device}")
     if device.type == 'cuda':
         print(f"   GPU: {torch.cuda.get_device_name(0)}")
+        print(f"   GPU Memory: {torch.cuda.get_device_properties(0).total_memory / 1e9:.2f} GB")
     
     # Load data
     print(f"\n📦 Loading dataset from {DATA_DIR}...")
@@ -180,9 +186,9 @@ def main():
     print(f"   Batch size: {BATCH_SIZE}")
     print(f"   Classes: {class_names}")
     
-    # Create model (EfficientNet-Lite0 for edge deployment)
-    print(f"\n🤖 Creating EfficientNet-Lite0 model...")
-    model = timm.create_model('efficientnet_lite0', pretrained=True, num_classes=num_classes)
+    # Create teacher model (EfficientNet-B3 - larger model)
+    print(f"\n🎓 Creating Teacher Model: EfficientNet-B3...")
+    model = timm.create_model('efficientnet_b3', pretrained=True, num_classes=num_classes)
     model = model.to(device)
     
     total_params = sum(p.numel() for p in model.parameters())
@@ -191,10 +197,11 @@ def main():
     print(f"   Total parameters: {total_params:,}")
     print(f"   Trainable parameters: {trainable_params:,}")
     print(f"   Model size (FP32): ~{total_params * 4 / (1024**2):.2f} MB")
+    print(f"   📈 ~2.5x larger than student model (EfficientNet-B0)")
     
     # Loss and optimizer
     criterion = nn.CrossEntropyLoss()
-    optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE, weight_decay=1e-4)
+    optimizer = optim.AdamW(model.parameters(), lr=LEARNING_RATE, weight_decay=1e-4)
     scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=NUM_EPOCHS)
     
     # Training loop
@@ -202,7 +209,8 @@ def main():
     start_time = time.time()
     
     print(f"\n{'='*60}")
-    print(f"🚀 Starting training for {NUM_EPOCHS} epochs...")
+    print(f"🚀 Starting teacher training for {NUM_EPOCHS} epochs...")
+    print(f"   Goal: Maximize accuracy (size not constrained)")
     print(f"{'='*60}\n")
     
     for epoch in range(1, NUM_EPOCHS + 1):
@@ -233,7 +241,7 @@ def main():
         # Save best model
         if val_acc > best_val_acc:
             best_val_acc = val_acc
-            checkpoint_path = 'fire_detection_best.pth'
+            checkpoint_path = 'distillation_experiment/teacher/teacher_best.pth'
             torch.save({
                 'epoch': epoch,
                 'model_state_dict': model.state_dict(),
@@ -242,22 +250,22 @@ def main():
                 'val_loss': val_loss,
                 'class_names': class_names,
                 'num_classes': num_classes,
-                'model_name': 'efficientnet_lite0',
+                'model_name': 'efficientnet_b3',
             }, checkpoint_path)
-            print(f"  ✅ Saved best model (val_acc: {val_acc:.2f}%)")
+            print(f"  ✅ Saved best teacher model (val_acc: {val_acc:.2f}%)")
         
         print(f"{'─'*60}\n")
     
     total_time = time.time() - start_time
     
     print(f"\n{'='*60}")
-    print(f"✅ Training completed!")
+    print(f"✅ Teacher training completed!")
     print(f"{'='*60}")
     print(f"⏱️  Total training time: {total_time/60:.1f} minutes")
     print(f"🎯 Best validation accuracy: {best_val_acc:.2f}%")
-    print(f"💾 Model saved to: fire_detection_best.pth")
-    print(f"\n🧪 Next step: Test the model")
-    print(f"   python test_trained_model.py")
+    print(f"💾 Model saved to: distillation_experiment/teacher/teacher_best.pth")
+    print(f"\n🔬 Next step: Train student with knowledge distillation")
+    print(f"   python distillation_experiment/student/distill_student.py")
 
 if __name__ == '__main__':
     main()

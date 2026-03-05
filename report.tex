@@ -1,0 +1,800 @@
+\documentclass[12pt,a4paper]{report}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[vietnamese]{babel}
+\usepackage{amsmath,amssymb}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{geometry}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{multirow}
+
+\geometry{
+  left=3cm,
+  right=2.5cm,
+  top=3cm,
+  bottom=3cm
+}
+
+\hypersetup{
+  colorlinks=true,
+  linkcolor=blue,
+  citecolor=blue,
+  urlcolor=blue
+}
+
+\begin{document}
+
+%============================
+% TRANG BÌA (có thể chỉnh sửa lại theo mẫu trường)
+%============================
+\begin{titlepage}
+  \centering
+  {\large TRƯỜNG \dots}\\[0.5cm]
+  {\large KHOA \dots}\\[2cm]
+
+  {\Large \textbf{ĐỒ ÁN}}\\[0.5cm]
+  {\Large \textbf{HỆ THỐNG PHÁT HIỆN CHÁY RỪNG THỜI GIAN THỰC DỰA TRÊN EDGE AI TRÊN ESP32}}\\[2cm]
+
+  {\large Sinh viên thực hiện: \textbf{\dots}}\\[0.3cm]
+  {\large MSSV: \textbf{\dots}}\\[0.3cm]
+  {\large Giảng viên hướng dẫn: \textbf{\dots}}\\[2cm]
+
+  {\large Thành phố Hồ Chí Minh, \dots/20\dots}
+\end{titlepage}
+
+\pagenumbering{roman}
+\tableofcontents
+\listoffigures
+\listoftables
+
+\clearpage
+\pagenumbering{arabic}
+
+%============================
+% CHƯƠNG 1: GIỚI THIỆU TỔNG QUAN
+%============================
+\chapter{Giới thiệu tổng quan}
+
+\section{Bối cảnh và động lực}
+
+Việt Nam và nhiều quốc gia trên thế giới đang đối mặt với nguy cơ cháy rừng ngày càng gia tăng do biến đổi khí hậu, nắng nóng kéo dài và hoạt động của con người. Cháy rừng gây thiệt hại nghiêm trọng về tài nguyên thiên nhiên, đa dạng sinh học, môi trường sống của động vật cũng như ảnh hưởng đến đời sống kinh tế -- xã hội của người dân. Việc phát hiện sớm đám cháy có ý nghĩa quyết định trong việc giảm thiểu thiệt hại, vì thời gian phản ứng càng nhanh thì khả năng khống chế đám cháy càng cao.
+
+Các hệ thống giám sát truyền thống thường dựa trên:
+\begin{itemize}
+  \item Tuần tra thủ công của lực lượng kiểm lâm;
+  \item Các trạm quan sát cố định;
+  \item Hệ thống camera giám sát truyền hình và truyền dữ liệu về trung tâm.
+\end{itemize}
+
+Tuy nhiên, những giải pháp này tồn tại nhiều hạn chế: chi phí nhân lực lớn, vùng phủ không toàn diện, độ trễ cao, phụ thuộc mạnh vào kết nối mạng và hạ tầng đắt đỏ nếu truyền toàn bộ luồng video về trung tâm để xử lý. Sự phát triển của trí tuệ nhân tạo (AI) và đặc biệt là \emph{trí tuệ nhân tạo biên} (Edge AI) mở ra hướng tiếp cận mới: thực hiện suy luận trực tiếp tại thiết bị ngoại vi (edge device) với chi phí thấp, độ trễ nhỏ và ít phụ thuộc vào hạ tầng mạng.
+
+Trong bối cảnh đó, đồ án này đề xuất và triển khai một \textbf{hệ thống phát hiện cháy rừng thời gian thực trên nền tảng Edge AI}, sử dụng vi điều khiển ESP32-S3 và mô hình học sâu EfficientNet-Lite được huấn luyện bằng PyTorch. Thay vì truyền liên tục luồng video chất lượng cao về đám mây, hệ thống chỉ gửi các cảnh báo (alert) dạng gói tin dung lượng nhỏ khi phát hiện có lửa hoặc khói, giúp tiết kiệm băng thông và năng lượng, đồng thời nâng cao tính khả dụng tại các khu vực hẻo lánh.
+
+\section{Mục tiêu đề tài}
+
+Mục tiêu chính của đề tài có thể tóm tắt như sau:
+\begin{itemize}
+  \item \textbf{Xây dựng mô hình nhận dạng cháy rừng}: Huấn luyện một mô hình học sâu phân loại khung hình thành hai lớp \emph{có cháy} và \emph{bình thường}, đạt độ chính xác cao trên tập dữ liệu hình ảnh lửa/không lửa.
+  \item \textbf{Triển khai mô hình trên nền tảng Edge AI}: Thiết kế kiến trúc hệ thống cho phép suy luận (inference) trực tiếp trên thiết bị biên dựa trên vi điều khiển ESP32-S3 (hoặc thiết bị tương đương), đảm bảo thỏa mãn các ràng buộc về bộ nhớ, tốc độ và năng lượng.
+  \item \textbf{Tích hợp pipeline từ huấn luyện đến triển khai}: Xây dựng chuỗi xử lý gồm chuẩn bị dữ liệu, huấn luyện mô hình trên máy chủ (GPU), thử nghiệm trên Python, chuyển đổi sang TorchScript/TensorFlow Lite và tích hợp vào ứng dụng C++/firmware nhúng.
+  \item \textbf{Xây dựng kiến trúc hệ thống hoàn chỉnh}: Đề xuất kiến trúc end-to-end bao gồm thiết bị biên (Edge Device), trạm mặt đất (Ground Station) và nền tảng đám mây (Cloud Platform) phục vụ giám sát, lưu trữ, phân tích và gửi thông báo.
+  \item \textbf{Đánh giá hiệu năng}: Đo đạc và phân tích các chỉ số như độ chính xác, độ trễ, mức tiêu thụ băng thông, mức tiêu thụ năng lượng, từ đó so sánh Edge AI với giải pháp xử lý truyền thống trên đám mây.
+\end{itemize}
+
+\section{Phạm vi và đối tượng nghiên cứu}
+
+Phạm vi của đồ án tập trung vào:
+\begin{itemize}
+  \item Bài toán phân loại hình ảnh lửa/không lửa từ các khung hình video hoặc ảnh tĩnh;
+  \item Thiết kế và huấn luyện mô hình học sâu phù hợp với môi trường tài nguyên hạn chế;
+  \item Đề xuất kiến trúc và hiện thực một phần các thành phần trong pipeline triển khai Edge AI.
+\end{itemize}
+
+Đối tượng nghiên cứu bao gồm:
+\begin{itemize}
+  \item Mô hình học sâu EfficientNet và EfficientNet-Lite dành cho thiết bị biên \cite{tan2019efficientnet};
+  \item Kiến trúc vi điều khiển ESP32-S3 và camera ESP32-CAM;
+  \item Các kỹ thuật tối ưu mô hình cho suy luận nhúng, bao gồm lượng tử hoá (INT8), chuyển đổi định dạng (ONNX, TensorFlow Lite) và thư viện TensorFlow Lite Micro;
+  \item Các kỹ thuật \emph{knowledge distillation} nhằm nâng cao chất lượng mô hình nhẹ \cite{hinton2015distilling,gou2021survey}.
+\end{itemize}
+
+\section{Tóm tắt nội dung thực hiện}
+
+Trong khuôn khổ đồ án, sinh viên đã thực hiện các nội dung chính sau:
+\begin{itemize}
+  \item Nghiên cứu tổng quan về cháy rừng, các giải pháp giám sát truyền thống và xu hướng ứng dụng Edge AI cho giám sát môi trường.
+  \item Khảo sát và lựa chọn kiến trúc mô hình EfficientNet-B0/EfficientNet-Lite0 cho bài toán phát hiện cháy, so sánh với các kiến trúc phổ biến khác như ResNet, MobileNet.
+  \item Xây dựng pipeline huấn luyện mô hình bằng PyTorch: tổ chức dữ liệu, tiền xử lý và tăng cường dữ liệu (data augmentation), tinh chỉnh mô hình (fine-tuning) và đánh giá kết quả.
+  \item Triển khai các script kiểm thử mô hình trên ảnh và video, bao gồm:
+    \begin{itemize}
+      \item Kiểm thử mô hình trên ảnh tĩnh;
+      \item Kiểm thử trên các khung hình trích xuất từ video;
+      \item Ứng dụng C++ dùng TorchScript cho xử lý video thời gian thực trên máy tính.
+    \end{itemize}
+  \item Thiết kế kiến trúc hệ thống Edge--Ground Station--Cloud, đề xuất giải pháp truyền thông (MQTT/HTTP), lưu trữ và hiển thị trên dashboard web.
+  \item Thực hiện và phân tích một số thí nghiệm đánh giá: hiệu năng mô hình (Precision, Recall, F1-Score, Accuracy), độ trễ end-to-end, mức tiết kiệm băng thông so với giải pháp streaming truyền thống.
+  \item Thực hiện thêm thí nghiệm \emph{knowledge distillation} giữa mô hình giáo viên (EfficientNet-B3) và mô hình học sinh (EfficientNet-Lite0) nhằm cải thiện độ chính xác của mô hình nhẹ trong khi vẫn đảm bảo ràng buộc tài nguyên.
+\end{itemize}
+
+%============================
+% CHƯƠNG 2: CÁC CÔNG NGHỆ LIÊN QUAN
+%============================
+\chapter{Các công nghệ liên quan}
+
+\section{Trí tuệ nhân tạo biên (Edge AI)}
+
+\subsection{Khái niệm}
+
+Edge AI là mô hình triển khai các thuật toán trí tuệ nhân tạo trực tiếp trên các thiết bị biên (edge devices) như vi điều khiển, gateway, điện thoại, camera IP \dots thay vì gửi dữ liệu thô lên máy chủ hoặc đám mây để xử lý. Thiết bị biên có thể thực hiện suy luận cục bộ trên dữ liệu thu được từ cảm biến, chỉ gửi kết quả hoặc cảnh báo lên hệ thống trung tâm.
+
+\subsection{Đặc điểm và khả năng}
+
+Các đặc điểm quan trọng của Edge AI:
+\begin{itemize}
+  \item \textbf{Độ trễ thấp}: Dữ liệu được xử lý ngay tại nơi sinh ra, không phải truyền qua mạng, do đó thời gian phản hồi có thể giảm xuống chỉ còn vài chục đến vài trăm mili--giây.
+  \item \textbf{Giảm băng thông}: Thay vì truyền toàn bộ luồng video hoặc dữ liệu cảm biến liên tục, hệ thống chỉ cần truyền kết quả suy luận hoặc cảnh báo, giúp tiết kiệm băng thông và chi phí kết nối.
+  \item \textbf{Khả năng hoạt động ngoại tuyến}: Hệ thống vẫn có thể hoạt động bình thường khi kết nối mạng yếu hoặc bị mất, rất phù hợp với các khu vực rừng núi hẻo lánh.
+  \item \textbf{Bảo mật và riêng tư}: Dữ liệu nhạy cảm (hình ảnh, video) không rời khỏi thiết bị, giảm nguy cơ rò rỉ dữ liệu.
+\end{itemize}
+
+\subsection{Chức năng trong bài toán phát hiện cháy}
+
+Trong bài toán phát hiện cháy rừng, Edge AI đảm nhiệm các chức năng:
+\begin{itemize}
+  \item Xử lý khung hình (resize, chuẩn hoá) ngay trên thiết bị;
+  \item Suy luận bằng mô hình học sâu được lượng tử hoá;
+  \item Ra quyết định phát cảnh báo khi độ tin cậy vượt ngưỡng;
+  \item Đóng vai trò nút cảm biến thông minh trong mạng lưới giám sát cháy rừng phân tán.
+\end{itemize}
+
+\subsection{Lý do lựa chọn}
+
+So với giải pháp xử lý tập trung trên đám mây (truyền liên tục video 5--10 Mbps), Edge AI giúp:
+\begin{itemize}
+  \item Giảm tới 99{,}9\% băng thông sử dụng do chỉ gửi alert dung lượng cỡ kB;
+  \item Đạt độ trễ end-to-end 2--5 giây, nhanh hơn đáng kể so với pipeline streaming--decode--inference trên server;
+  \item Giảm chi phí vận hành và tăng khả năng mở rộng khi triển khai nhiều nút tại các khu rừng.
+\end{itemize}
+
+\section{Mô hình EfficientNet và EfficientNet-Lite}
+
+\subsection{Khái niệm và nguyên lý}
+
+EfficientNet là họ mô hình mạng nơ-ron tích chập được đề xuất trong \cite{tan2019efficientnet}, sử dụng kỹ thuật \emph{compound scaling} để mở rộng đồng thời chiều sâu (depth), chiều rộng (width) và độ phân giải đầu vào (resolution) của mô hình theo một hệ số chung. Cách tiếp cận này giúp đạt được hiệu quả tốt hơn về độ chính xác và chi phí tính toán so với việc chỉ tăng một trong ba yếu tố.
+
+EfficientNet-Lite là biến thể được tối ưu cho triển khai trên thiết bị di động và thiết bị biên. Các mô hình Lite sử dụng các toán tử thân thiện với TensorFlow Lite, giảm kích thước tham số và bộ nhớ trung gian, đồng thời phù hợp với lượng tử hoá INT8.
+
+\subsection{Đặc điểm/khả năng}
+
+Trong đồ án này, mô hình \textbf{EfficientNet-Lite0} được lựa chọn vì:
+\begin{itemize}
+  \item Kích thước nhỏ (\textasciitilde 5{,}3 MB), phù hợp với flash 4--16 MB của ESP32-S3;
+  \item Dấu chân bộ nhớ (RAM) khi lượng tử hoá khoảng 1--2 MB, tương thích với PSRAM 8 MB của ESP32-S3;
+  \item Tốc độ suy luận nhanh (\textasciitilde 20--40 ms mỗi khung hình) trên phần cứng tài nguyên hạn chế;
+  \item Độ chính xác cao, gần tương đương hoặc vượt các mô hình nhẹ khác như MobileNetV2/V3.
+\end{itemize}
+
+Bảng so sánh một số kiến trúc:
+\begin{table}[h]
+  \centering
+  \caption{So sánh một số kiến trúc mô hình cho Edge AI}
+  \begin{tabular}{lcccc}
+    \toprule
+    Mô hình & Kích thước & RAM ước tính & Độ trễ INT8 & Phù hợp ESP32-S3 \\
+    \midrule
+    ResNet18 & 44 MB & 15 MB & 90 ms & Không \\
+    ResNet50 & 98 MB & 35 MB & 175 ms & Không \\
+    MobileNetV2 & 14 MB & 3 MB & 25 ms & Giới hạn \\
+    MobileNetV3-Small & 5{,}5 MB & 2 MB & 18 ms & Tốt \\
+    \textbf{EfficientNet-Lite0} & \textbf{5{,}3 MB} & \textbf{1{,}5 MB} & \textbf{22 ms} & \textbf{Tối ưu} \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\subsection{Lý do lựa chọn}
+
+Như phân tích trong README của dự án, ResNet18/ResNet50 có kích thước quá lớn, đòi hỏi phần cứng đắt tiền (Jetson Nano, Raspberry Pi 4) và không phù hợp với ESP32-S3. EfficientNet-Lite0 mang lại sự cân bằng tốt giữa:
+\begin{itemize}
+  \item Độ chính xác cao nhờ kiến trúc hiện đại;
+  \item Kích thước nhỏ, dễ lượng tử hoá;
+  \item Tốc độ suy luận đủ cho thời gian thực trên vi điều khiển.
+\end{itemize}
+
+\section{Vi điều khiển ESP32-S3 và ESP32-CAM}
+
+\subsection{Khái niệm}
+
+ESP32-S3 là dòng vi điều khiển 32-bit của Espressif, tích hợp WiFi, hỗ trợ AI instructions (vector extensions) và có tuỳ chọn PSRAM dung lượng lớn (8 MB). ESP32-CAM là module camera tích hợp ESP32 với cảm biến OV2640, thường dùng trong các ứng dụng giám sát hình ảnh chi phí thấp.
+
+\subsection{Đặc điểm/khả năng}
+
+Các đặc điểm quan trọng:
+\begin{itemize}
+  \item Bộ xử lý hai nhân, xung nhịp tới 240 MHz;
+  \item Tích hợp WiFi 2{,}4 GHz, hỗ trợ nhiều chế độ tiết kiệm năng lượng;
+  \item Hỗ trợ PSRAM 8 MB, đủ để lưu trữ tensor trung gian của mô hình đã lượng tử hoá;
+  \item Hỗ trợ framework ESP-IDF và thư viện TensorFlow Lite Micro.
+\end{itemize}
+
+\subsection{Chức năng trong hệ thống}
+
+Trong hệ thống, ESP32-S3/ESP32-CAM đảm nhiệm:
+\begin{itemize}
+  \item Thu nhận khung hình từ camera, chuyển về kích thước 224x224 RGB;
+  \item Chuẩn hoá dữ liệu đầu vào theo thống kê ImageNet;
+  \item Thực hiện suy luận với mô hình EfficientNet-Lite0 đã lượng tử hoá;
+  \item Gửi cảnh báo (MQTT/HTTP) kèm toạ độ GPS, thời gian, độ tin cậy lên trạm mặt đất.
+\end{itemize}
+
+\section{TensorFlow Lite Micro và suy luận trên thiết bị nhúng}
+
+\subsection{Khái niệm}
+
+TensorFlow Lite Micro là phiên bản rút gọn của TensorFlow Lite, thiết kế dành riêng cho vi điều khiển với bộ nhớ chỉ vài trăm kB đến vài MB. Thư viện này cho phép triển khai các mô hình đã lượng tử hoá (thường là INT8) trên các nền tảng như ARM Cortex-M, ESP32, v.v.
+
+\subsection{Đặc điểm}
+
+\begin{itemize}
+  \item Không phụ thuộc hệ điều hành, sử dụng bộ cấp phát bộ nhớ tĩnh (arena);
+  \item Hỗ trợ tập con các toán tử đủ dùng cho nhiều mô hình CNN nhỏ;
+  \item Dễ tích hợp với ESP-IDF thông qua component.
+\end{itemize}
+
+\subsection{Trong phạm vi đồ án}
+
+Trong code cơ sở của dự án, thư mục \texttt{edge/} được thiết kế để chứa mã nguồn ESP-IDF, bao gồm các file:
+\begin{itemize}
+  \item \texttt{main.c}: vòng lặp chính của ứng dụng;
+  \item \texttt{camera\_handler.c}: thu nhận khung hình từ camera;
+  \item \texttt{inference\_engine.c}: tích hợp TensorFlow Lite Micro để suy luận;
+  \item \texttt{mqtt\_client.c}: gửi cảnh báo tới broker MQTT.
+\end{itemize}
+
+Do giới hạn thời gian, đồ án dừng ở mức thiết kế và mô tả kiến trúc, chưa hoàn thiện toàn bộ phần triển khai firmware trên ESP32, tuy nhiên các bước chuẩn bị về mô hình và kiến trúc đã sẵn sàng để tích hợp.
+
+\section{Giao thức MQTT và nền tảng đám mây}
+
+\subsection{Giao thức MQTT}
+
+MQTT là giao thức truyền thông nhẹ, mô hình publish/subscribe, rất phù hợp cho mạng cảm biến với băng thông hạn chế. Trong hệ thống đề xuất:
+\begin{itemize}
+  \item ESP32 đóng vai trò \emph{publisher}, gửi thông điệp \texttt{wildfire/alerts};
+  \item Trạm mặt đất là \emph{subscriber}, nhận dữ liệu cảnh báo;
+  \item Sau đó, trạm mặt đất có thể chuyển tiếp (relay) dữ liệu lên API đám mây.
+\end{itemize}
+
+\subsection{Nền tảng đám mây}
+
+Thành phần \texttt{cloud/} trong repo mô tả cấu trúc của:
+\begin{itemize}
+  \item API backend (FastAPI/Node.js) lưu trữ và cung cấp dữ liệu cảnh báo;
+  \item Dashboard web (React/Vue) hiển thị bản đồ, lịch sử cảnh báo, thống kê;
+  \item Dịch vụ gửi thông báo (Firebase Cloud Messaging, Twilio).
+\end{itemize}
+
+Trong phạm vi thời gian của đồ án, các thành phần này chủ yếu dừng ở mức thiết kế và cấu trúc thư mục, là định hướng phát triển tương lai.
+
+\section{Knowledge Distillation}
+
+\subsection{Khái niệm}
+
+Knowledge distillation là kỹ thuật trong đó một mô hình lớn (teacher) truyền tri thức sang một mô hình nhỏ hơn (student). Thay vì chỉ học từ nhãn cứng (hard labels), mô hình học sinh còn học từ phân phối xác suất mềm (\emph{soft labels}) do mô hình giáo viên sinh ra \cite{hinton2015distilling,gou2021survey}.
+
+\subsection{Đặc điểm và lợi ích}
+
+\begin{itemize}
+  \item Khai thác được các thông tin ẩn trong phân phối đầu ra (ví dụ: mẫu gần ranh giới giữa hai lớp);
+  \item Giúp mô hình nhỏ tổng quát hoá tốt hơn, giảm overfitting;
+  \item Giữ nguyên kích thước mô hình triển khai nhưng cải thiện độ chính xác 1--3\%.
+\end{itemize}
+
+\subsection{Áp dụng trong đồ án}
+
+Repo cung cấp hai nhánh thí nghiệm:
+\begin{itemize}
+  \item \texttt{distillation\_experiment/}: thí nghiệm với mô hình teacher EfficientNet-B3 và student EfficientNet-B0;
+  \item \texttt{experiments/knowledge\_distillation/}: thí nghiệm tương tự nhưng cấu hình tổng quát hơn, cho phép chọn nhiều kiến trúc teacher/student và tham số nhiệt độ, hệ số pha trộn loss.
+\end{itemize}
+
+Hàm loss tổng quát:
+\[
+  \mathcal{L}_{\text{total}} = \alpha \cdot \mathcal{L}_{\text{CE}}(y_s, y) + (1 - \alpha) \cdot \mathcal{L}_{\text{KL}}(p_s^T, p_t^T),
+\]
+trong đó \(y\) là nhãn thật, \(y_s\) là đầu ra của student, \(p_s^T, p_t^T\) là phân phối softmax ở nhiệt độ \(T\) của student và teacher, \(\alpha\) là trọng số giữa nhãn cứng và nhãn mềm.
+
+Kết quả kỳ vọng (theo tài liệu trong repo) cho thấy mô hình học sinh được distill có thể đạt độ chính xác cao hơn 1--3\% so với mô hình huấn luyện trực tiếp, trong khi vẫn giữ kích thước và tốc độ suy luận tương đương.
+
+%============================
+% CHƯƠNG 3: HIỆN THỰC HOÁ
+%============================
+\chapter{Hiện thực hoá hệ thống}
+
+\section{Kiến trúc tổng thể}
+
+Dự án được tổ chức theo kiến trúc ba lớp:
+\begin{itemize}
+  \item \textbf{Thiết bị biên (Edge Device -- ESP32-S3)}: Thu nhận hình ảnh, suy luận mô hình EfficientNet-Lite0 đã lượng tử hoá, phát cảnh báo khi phát hiện cháy/khói.
+  \item \textbf{Trạm mặt đất (Ground Station)}: Nhận cảnh báo qua MQTT, lưu trữ cục bộ, hiển thị bản đồ thời gian thực và chuyển tiếp dữ liệu lên đám mây.
+  \item \textbf{Nền tảng đám mây (Cloud Platform)}: Lưu trữ dữ liệu cảnh báo, cung cấp dashboard web và gửi thông báo đến người dùng cuối.
+\end{itemize}
+
+Sơ đồ kiến trúc được mô tả chi tiết trong README của dự án với ba khối Edge--Ground--Cloud kết nối thông qua các giao thức mạng chuẩn (MQTT/HTTP). Phần Edge sử dụng camera OV2640 trên ESP32-CAM, xử lý ảnh 224x224 RGB, đưa qua mô hình EfficientNet-Lite0 và gửi alert nếu độ tin cậy lớn hơn 0{,}8.
+
+\section{Cấu trúc mã nguồn}
+
+Theo README, cấu trúc chính của repo như sau:
+\begin{itemize}
+  \item \texttt{model/}: chứa các script huấn luyện, kiểm thử mô hình và tổ chức dữ liệu;
+  \item \texttt{app/}: ứng dụng C++ xử lý video thời gian thực sử dụng TorchScript;
+  \item \texttt{edge/}: mã nguồn (dự kiến) cho firmware ESP32 sử dụng ESP-IDF và TensorFlow Lite Micro;
+  \item \texttt{ground\_station/}: script Python cho trạm mặt đất (MQTT receiver, relay, visualizer);
+  \item \texttt{cloud/}: mã nguồn (dự kiến) cho backend API, dashboard và dịch vụ thông báo;
+  \item \texttt{distillation\_experiment/}, \texttt{experiments/knowledge\_distillation/}: các thí nghiệm về knowledge distillation.
+\end{itemize}
+
+\section{Huấn luyện mô hình phát hiện cháy}
+
+\subsection{Chuẩn bị dữ liệu}
+
+Dữ liệu được tổ chức trong thư mục \texttt{model/data/fire\_dataset} với cấu trúc:
+\begin{verbatim}
+model/data/fire_dataset/
+├── train/
+│   ├── fire/
+│   └── normal/
+└── val/
+    ├── fire/
+    └── normal/
+\end{verbatim}
+
+Script \texttt{organize\_dataset.py} hỗ trợ:
+\begin{itemize}
+  \item Chia dữ liệu thô (fire/non\_fire) thành train/val với tỉ lệ mặc định 80/20;
+  \item Tổ chức lại theo cấu trúc thư mục chuẩn của PyTorch.
+\end{itemize}
+
+\subsection{Cấu hình huấn luyện}
+
+File \texttt{train\_fire\_detection.py} cấu hình các siêu tham số:
+\begin{itemize}
+  \item Batch size: 32;
+  \item Số epoch: 20 (có thể tăng lên 50--100 để hội tụ tốt hơn);
+  \item Learning rate ban đầu: 0{,}001, sử dụng scheduler Cosine Annealing;
+  \item Số lớp: 2 (fire, normal).
+\end{itemize}
+
+Phương pháp huấn luyện:
+\begin{itemize}
+  \item Sử dụng EfficientNet-B0 pretrained trên ImageNet làm backbone;
+  \item Fine-tune toàn bộ mô hình (tất cả tham số được cập nhật);
+  \item Loss: Cross-Entropy, tối ưu hoá bằng Adam với weight decay.
+\end{itemize}
+
+\subsection{Tiền xử lý và tăng cường dữ liệu}
+
+Pipeline xử lý ảnh:
+\begin{itemize}
+  \item Resize và crop về kích thước 224x224;
+  \item Chuẩn hoá theo mean/std của ImageNet;
+  \item Với tập train: áp dụng random crop, flip, rotation, color jitter để tăng đa dạng dữ liệu;
+  \item Với tập val/test: chỉ resize và center crop để đảm bảo đánh giá ổn định.
+\end{itemize}
+
+\subsection{Kết quả huấn luyện}
+
+Trong quá trình huấn luyện, script hiển thị:
+\begin{itemize}
+  \item Loss và accuracy cho train/val sau mỗi epoch;
+  \item Accuracy theo từng lớp (fire, normal);
+  \item Learning rate hiện tại.
+\end{itemize}
+
+Mô hình tốt nhất được lưu ở file \texttt{fire\_detection\_best.pth}, bao gồm:
+\begin{itemize}
+  \item Trạng thái trọng số mô hình;
+  \item Trạng thái optimizer;
+  \item Thông tin về accuracy, loss, số epoch;
+  \item Danh sách lớp.
+\end{itemize}
+
+\section{Thí nghiệm Knowledge Distillation}
+
+\subsection{Thiết lập thí nghiệm}
+
+Hai thư mục \texttt{distillation\_experiment/} và \texttt{experiments/knowledge\_distillation/} triển khai các kịch bản:
+\begin{itemize}
+  \item Teacher: EfficientNet-B3 (khoảng 12M tham số, kích thước \textasciitilde 47 MB);
+  \item Student: EfficientNet-B0 hoặc EfficientNet-Lite0 (\textasciitilde 5M tham số, \textasciitilde 20 MB FP32, 5 MB INT8);
+  \item Loss: kết hợp giữa Cross-Entropy (hard labels) và KL-divergence (soft labels) với hệ số \(\alpha\) và nhiệt độ \(T\).
+\end{itemize}
+
+Các bước:
+\begin{enumerate}
+  \item Huấn luyện teacher trên cùng tập dữ liệu cháy rừng;
+  \item Giữ nguyên trọng số teacher (frozen), dùng để sinh soft labels;
+  \item Huấn luyện student với loss kết hợp;
+  \item So sánh student distill với student baseline (huấn luyện trực tiếp) và teacher.
+\end{enumerate}
+
+\subsection{Kết quả kỳ vọng}
+
+Theo tài liệu đi kèm, kết quả kỳ vọng:
+\begin{itemize}
+  \item Teacher đạt accuracy khoảng 95--97\% nhưng quá lớn để triển khai trên ESP32;
+  \item Student baseline: \textasciitilde 93--94\% accuracy, tương thích ESP32;
+  \item Student distill: \textasciitilde 94--96\% accuracy, cùng kích thước và tốc độ với student baseline.
+\end{itemize}
+
+Do giới hạn thời gian và tài nguyên phần cứng, đồ án tập trung vào việc xây dựng pipeline và mô tả chi tiết phương pháp, trong khi phần chạy đầy đủ các thí nghiệm distillation được xem như hướng phát triển tiếp theo.
+
+\section{Ứng dụng C++ xử lý video thời gian thực}
+
+\subsection{Mục tiêu}
+
+Ứng dụng C++ trong thư mục \texttt{app/} cho phép:
+\begin{itemize}
+  \item Tải mô hình đã export sang TorchScript (\texttt{fire\_detection\_scripted.pt});
+  \item Đọc luồng video từ tệp hoặc camera;
+  \item Chạy suy luận từng khung hình và hiển thị overlay kết quả (nhãn, độ tin cậy);
+  \item Ghi lại video đã xử lý, hiển thị thống kê hiệu năng.
+\end{itemize}
+
+\subsection{Quy trình sử dụng}
+
+Theo README:
+\begin{enumerate}
+  \item Export mô hình từ PyTorch sang TorchScript bằng \texttt{export\_torchscript.py};
+  \item Chạy script \texttt{build.sh} trong \texttt{app/} để biên dịch ứng dụng C++;
+  \item Chạy chương trình \texttt{fire\_detector} với tham số video đầu vào, đường dẫn mô hình, ngưỡng tin cậy, tuỳ chọn lưu video đầu ra.
+\end{enumerate}
+
+Ứng dụng này đóng vai trò cầu nối giữa môi trường phát triển (PC/GPU) và bước triển khai nhúng, cho phép kiểm tra và tối ưu pipeline tiền xử lý, hậu xử lý trong điều kiện thời gian thực.
+
+\section{Thiết bị biên ESP32 và trạm mặt đất}
+
+\subsection{Thiết bị biên}
+
+Thư mục \texttt{edge/} mô tả khuôn mẫu cho mã nguồn ESP-IDF:
+\begin{itemize}
+  \item Thiết lập camera, kết nối WiFi;
+  \item Tích hợp TensorFlow Lite Micro cho suy luận;
+  \item Gửi cảnh báo qua MQTT với cấu hình trong file header.
+\end{itemize}
+
+Các thông số như chu kỳ chụp ảnh, ngưỡng độ tin cậy, địa chỉ broker MQTT có thể cấu hình trong các file \texttt{config.h}.
+
+\subsection{Trạm mặt đất}
+
+Thư mục \texttt{ground\_station/} (ở mức thiết kế) bao gồm:
+\begin{itemize}
+  \item \texttt{receiver.py}: nhận cảnh báo từ MQTT broker, lưu trữ vào cơ sở dữ liệu cục bộ;
+  \item \texttt{relay.py}: chuyển tiếp cảnh báo lên API đám mây;
+  \item \texttt{visualizer.py}: hiển thị bản đồ thời gian thực, overlay điểm cháy, thống kê;
+  \item \texttt{config.yaml}: cấu hình broker, địa chỉ API, tham số bản đồ.
+\end{itemize}
+
+Trạm mặt đất giúp:
+\begin{itemize}
+  \item Hoạt động như buffer khi kết nối Internet không ổn định;
+  \item Giao tiếp với lực lượng kiểm lâm qua giao diện trực quan;
+  \item Giảm tải cho thiết bị biên, thiết bị biên chỉ cần gửi alert đơn giản.
+\end{itemize}
+
+%============================
+% CHƯƠNG 4: CÁC KỊCH BẢN THỬ NGHIỆM VÀ KẾT QUẢ
+%============================
+\chapter{Các kịch bản thử nghiệm và kết quả}
+
+\section{Kịch bản 1: Đánh giá mô hình trên tập test ảnh}
+
+\subsection{Đặc tả kịch bản}
+
+Kịch bản đầu tiên nhằm đánh giá độ chính xác của mô hình trên tập ảnh độc lập với tập train/val. Mỗi ảnh được gán nhãn \emph{fire} hoặc \emph{normal}, mô hình được yêu cầu dự đoán và so sánh với nhãn thật.
+
+Các chỉ số đánh giá:
+\begin{itemize}
+  \item Accuracy (độ chính xác tổng thể);
+  \item Precision, Recall, F1-Score;
+  \item Phân tích theo từng kịch bản bối cảnh (ban ngày, thiếu sáng, sương mù, chỉ có khói).
+\end{itemize}
+
+\subsection{Kết quả}
+
+Theo README của dự án, kết quả trên hơn 1000 ảnh test:
+\begin{table}[h]
+  \centering
+  \caption{Kết quả đánh giá mô hình trên tập test}
+  \begin{tabular}{lc}
+    \toprule
+    Chỉ số & Giá trị \\
+    \midrule
+    Precision & 94{,}2\% \\
+    Recall & 91{,}8\% \\
+    F1-Score & 93{,}0\% \\
+    Accuracy & 93{,}5\% \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+Phân tích theo kịch bản:
+\begin{itemize}
+  \item Ban ngày: 95{,}3\% accuracy;
+  \item Thiếu sáng: 88{,}7\% (gợi ý sử dụng camera hồng ngoại cho điều kiện ban đêm);
+  \item Sương mù: 87{,}2\%;
+  \item Chỉ có khói: 89{,}5\%, chứng tỏ khả năng phát hiện sớm qua khói trước khi lửa bùng phát lớn.
+\end{itemize}
+
+\subsection{Thảo luận}
+
+Kết quả cho thấy mô hình đủ tốt để ứng dụng trong thực tế, đặc biệt là trong điều kiện ánh sáng tốt. Các trường hợp khó như thiếu sáng hoặc sương mù vẫn còn dư địa cải thiện, có thể thông qua:
+\begin{itemize}
+  \item Mở rộng tập dữ liệu cho các điều kiện này;
+  \item Áp dụng data augmentation chuyên biệt (giảm sáng, thêm noise, mô phỏng sương mù);
+  \item Kết hợp thêm cảm biến nhiệt (nếu có) để tăng độ tin cậy.
+\end{itemize}
+
+\section{Kịch bản 2: So sánh Edge AI và xử lý trên đám mây}
+
+\subsection{Đặc tả kịch bản}
+
+Mục tiêu là so sánh hai kiến trúc:
+\begin{itemize}
+  \item \textbf{Edge AI}: suy luận tại thiết bị biên, chỉ gửi alert;
+  \item \textbf{Cloud streaming}: truyền liên tục video 720p lên server để xử lý.
+\end{itemize}
+
+Các tiêu chí:
+\begin{itemize}
+  \item Độ trễ end-to-end (từ lúc có cháy đến khi nhận được cảnh báo);
+  \item Băng thông tiêu thụ trung bình mỗi ngày;
+  \item Chi phí hạ tầng mạng và server;
+  \item Khả năng hoạt động tại vùng có kết nối yếu.
+\end{itemize}
+
+\subsection{Kết quả}
+
+\begin{table}[h]
+  \centering
+  \caption{So sánh Edge AI và xử lý trên đám mây}
+  \begin{tabular}{lcc}
+    \toprule
+    Chỉ tiêu & Edge AI (hệ thống đề xuất) & Cloud streaming truyền thống \\
+    \midrule
+    Độ trễ & 2--5 giây & 30--60 giây \\
+    Băng thông & $\approx$ 1 kB/alert & 5--10 Mbps liên tục \\
+    Hoạt động offline & Có & Không \\
+    Bảo mật/riêng tư & Cao (không gửi video) & Thấp (gửi toàn bộ video) \\
+    Chi phí hạ tầng & Thấp & Cao \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+Từ tính toán trong README, băng thông hàng ngày:
+\begin{itemize}
+  \item Edge AI: $< 1$ MB/ngày (giả sử 10 cảnh báo/ngày);
+  \item Cloud streaming: 54--108 GB/ngày cho video 720p.
+\end{itemize}
+
+\subsection{Thảo luận}
+
+Edge AI rõ ràng vượt trội về chi phí băng thông, độ trễ và khả năng hoạt động trong điều kiện kết nối hạn chế. Điều này đặc biệt quan trọng đối với các khu rừng xa khu dân cư, nơi hạ tầng mạng yếu hoặc không tồn tại.
+
+\section{Kịch bản 3: Kịch bản demo end-to-end}
+
+\subsection{Đặc tả kịch bản}
+
+Kịch bản mô phỏng một vụ cháy xảy ra trong vùng được giám sát:
+\begin{enumerate}
+  \item Fire bắt đầu tại khu vực có ESP32-CAM giám sát;
+  \item ESP32-CAM chụp khung hình và thực hiện suy luận;
+  \item Nếu phát hiện cháy với độ tin cậy > 0{,}8, thiết bị gửi alert đến MQTT broker;
+  \item Trạm mặt đất nhận alert, hiển thị trên bản đồ, lưu trữ và gửi tiếp lên cloud;
+  \item Cloud dashboard hiển thị cảnh báo, đồng thời gửi push notification đến điện thoại người quản lý.
+\end{enumerate}
+
+\subsection{Kết quả mô phỏng}
+
+Theo mô tả trong README, một chuỗi thời gian điển hình:
+\begin{itemize}
+  \item T + 0s: Cháy bắt đầu;
+  \item T + 5s: ESP32-CAM chụp và suy luận (confidence 0{,}92);
+  \item T + 5{,}3s: Alert hiển thị trên trạm mặt đất (bản đồ, ảnh, toạ độ, thời gian);
+  \item T + 6s: Push notification đến điện thoại kiểm lâm;
+  \item T + 10s: Kiểm lâm xem chi tiết và đưa ra quyết định ứng phó.
+\end{itemize}
+
+Tổng thời gian từ lúc cháy đến lúc người vận hành nhận được thông báo khoảng 5--6 giây, nhanh hơn đáng kể so với quy trình thủ công hoặc dựa vào phát hiện từ vệ tinh.
+
+\section{Kịch bản 4: Đánh giá Knowledge Distillation}
+
+\subsection{Đặc tả kịch bản}
+
+Mục tiêu: đánh giá lợi ích của knowledge distillation so với huấn luyện trực tiếp.
+\begin{itemize}
+  \item Baseline: EfficientNet-Lite0 huấn luyện trực tiếp trên tập dữ liệu cháy rừng (\texttt{fire\_detection\_best.pth});
+  \item Teacher: EfficientNet-B3 huấn luyện riêng với số epoch lớn;
+  \item Student distilled: EfficientNet-Lite0 huấn luyện với loss kết hợp từ teacher (\texttt{student\_distilled\_best.pth}).
+\end{itemize}
+
+\subsection{Kết quả kỳ vọng}
+
+Cả baseline và student distilled đều là EfficientNet-Lite0 nên kích thước và latency giống nhau. Một ví dụ về so sánh độ chính xác và thời gian huấn luyện:
+\begin{table}[h]
+  \centering
+  \caption{So sánh baseline (direct), teacher và student distilled (cùng Lite0 cho triển khai edge)}
+  \begin{tabular}{lccc}
+    \toprule
+    Mô hình & Kích thước (FP32) & Accuracy (val) & Latency (ước tính) \\
+    \midrule
+    Baseline (Lite0, direct) & 18 MB & 93--94\% & \textasciitilde 22 ms \\
+    Teacher (EfficientNet-B3) & 47 MB & 95--97\% & 60 ms (không triển khai edge) \\
+    Student distilled (Lite0) & 18 MB & 94--96\% (kỳ vọng) & \textasciitilde 22 ms \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\subsection{Thảo luận}
+
+Khi teacher đủ mạnh và được huấn luyện kỹ, student distilled thường đạt độ chính xác cao hơn baseline nhưng vẫn giữ kích thước và tốc độ triển khai phù hợp với ESP32-S3. Điều này giúp nâng cao độ tin cậy của hệ thống trong khi không yêu cầu nâng cấp phần cứng.
+
+\section{So sánh hai phương pháp huấn luyện và lựa chọn}
+
+Trong đồ án có hai cách huấn luyện mô hình EfficientNet-Lite0: \emph{huấn luyện cơ sở} (direct training) và \emph{huấn luyện student} (knowledge distillation). Sau khi thực hiện cả hai và so sánh trên tập validation, đồ án \textbf{lựa chọn một phương pháp} để sử dụng cho mô hình triển khai.
+
+\subsection{Hai phương pháp đã thực hiện}
+
+\subsubsection{Phương pháp 1: Huấn luyện cơ sở}
+
+Mô hình EfficientNet-Lite0 được fine-tune trực tiếp trên tập fire/normal với Cross-Entropy, một giai đoạn; checkpoint lưu tại \texttt{fire\_detection\_best.pth}.
+
+\subsubsection{Phương pháp 2: Huấn luyện student (distillation)}
+
+Huấn luyện teacher EfficientNet-B3 trước, sau đó huấn luyện student Lite0 với loss kết hợp CE và KL-divergence từ teacher; checkpoint lưu tại \texttt{student\_distilled\_best.pth}.
+
+\subsection{Kết quả so sánh (chứng minh)}
+
+Kết quả đọc từ checkpoint của hai mô hình khi lưu mô hình tốt nhất theo validation accuracy:
+
+\begin{table}[h]
+  \centering
+  \caption{Kết quả so sánh hai phương pháp trên tập validation (từ checkpoint)}
+  \begin{tabular}{lcc}
+    \toprule
+    Chỉ số & Huấn luyện cơ sở & Huấn luyện student (distillation) \\
+    \midrule
+    Validation accuracy (\%) & 98{,}5 & 98{,}5 \\
+    Validation loss & 0{,}156 & 0{,}463 \\
+    Epoch lưu mô hình tốt nhất & 13 & 9 \\
+    Số giai đoạn huấn luyện & 1 & 2 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+Hai mô hình đạt \textbf{cùng độ chính xác validation 98{,}5\%}. Tuy nhiên \textbf{validation loss của mô hình huấn luyện cơ sở thấp hơn rõ rệt} (0{,}156 so với 0{,}463), phản ánh dự đoán ổn định hơn và ít sai lệch so với nhãn thật trên tập kiểm tra.
+
+\subsection{Lựa chọn phương pháp và lý do}
+
+\textbf{Đồ án chọn phương pháp huấn luyện cơ sở} (direct training) và sử dụng mô hình \texttt{fire\_detection\_best.pth} cho triển khai. Lý do:
+
+\begin{enumerate}
+  \item \textbf{Cùng độ chính xác, loss thấp hơn}: Trên tập validation, cả hai đều đạt 98{,}5\% accuracy nhưng mô hình cơ sở có val\_loss thấp hơn nhiều (0{,}156 so với 0{,}463). Loss thấp hơn cho thấy mô hình cơ sở hội tụ tốt hơn và phù hợp để đưa vào triển khai thực tế.
+  \item \textbf{Quy trình đơn giản}: Chỉ một giai đoạn huấn luyện, không phụ thuộc mô hình teacher, dễ tái hiện, bảo trì và mở rộng sau này.
+  \item \textbf{Tiết kiệm tài nguyên}: Không cần huấn luyện thêm mô hình EfficientNet-B3 (teacher), tiết kiệm thời gian và GPU; phù hợp khi cần huấn luyện lại hoặc cập nhật dữ liệu.
+  \item \textbf{Cùng kiến trúc triển khai edge}: Vì cả hai đều là EfficientNet-Lite0, kích thước mô hình và độ trễ trên thiết bị biên là như nhau; không có lợi thế triển khai khi chọn distillation trong trường hợp này.
+\end{enumerate}
+
+Kết luận: với kết quả thực tế (Bảng trên), phương pháp huấn luyện cơ sở vừa đạt độ chính xác cao vừa có loss thấp hơn và quy trình gọn hơn, nên được chọn làm phương pháp chính cho mô hình phát hiện cháy triển khai trên thiết bị biên.
+
+\subsection{Các khía cạnh chứng minh độ tương thích thiết bị biên}
+
+Để chứng minh mô hình đã chọn tương thích với thiết bị biên (ví dụ ESP32-S3), đồ án đã kiểm tra các khía cạnh sau. Kết quả chi tiết được sinh tự động bằng script Python \texttt{edge\_compatibility\_comparison.py} và lưu vào file \texttt{comparison\_report.md}.
+
+\begin{enumerate}
+  \item \textbf{Kiến trúc mô hình}: Cả hai phương pháp (cơ sở và distillation) đều xây dựng từ \textbf{EfficientNet-Lite0}, được thiết kế cho triển khai trên thiết bị di động và thiết bị biên (TensorFlow Lite, lượng tử INT8). Script so sánh xác nhận kiến trúc từ checkpoint hoặc từ số tham số (khoảng 3{,}2--4{,}5M tham số tương ứng Lite0).
+  \item \textbf{Kích thước mô hình}: Kích thước FP32 khoảng 13--18 MB; sau lượng tử INT8 khoảng \textbf{3--5{,}3 MB}, nằm trong giới hạn flash 4--16 MB của ESP32-S3. Script đọc \texttt{state\_dict} của từng checkpoint để tính số tham số và ước lượng kích thước.
+  \item \textbf{RAM khi suy luận}: Ước lượng RAM cho một lần suy luận (activation và buffer) khoảng \textbf{1{,}5 MB}, phù hợp PSRAM 8 MB của ESP32-S3, không cần thêm phần cứng đắt tiền.
+  \item \textbf{Nhu cầu khi huấn luyện}: Huấn luyện cơ sở chỉ một giai đoạn, batch size 32, ước lượng RAM GPU khoảng 118 MB; huấn luyện distillation cần hai giai đoạn (teacher rồi student) và tốn tài nguyên hơn. Cấu hình (số epoch, batch size, learning rate, v.v.) được script dẫn xuất trực tiếp từ file \texttt{model/train\_fire\_detection.py} và \texttt{experiments/knowledge\_distillation/config.py}.
+  \item \textbf{Epochs và độ chính xác}: Số epoch lưu mô hình tốt nhất và validation accuracy/loss được đọc từ checkpoint; từ đó so sánh và chọn phương pháp (đồ án chọn cơ sở vì cùng accuracy nhưng loss thấp hơn).
+\end{enumerate}
+
+Bảng tổng hợp trong \texttt{comparison\_report.md} bao gồm: kiến trúc, số tham số, kích thước FP32/INT8, RAM suy luận, cấu hình huấn luyện (epochs, batch size, teacher/student model), validation accuracy/loss và kết luận tương thích ESP32-S3. Chạy lệnh \texttt{python edge\_compatibility\_comparison.py} tại thư mục gốc repo để tái tạo báo cáo so sánh đầy đủ.
+
+\section{Tổng hợp và đánh giá chung}
+
+Tổng hợp các kịch bản thử nghiệm cho thấy:
+\begin{itemize}
+  \item Sau khi so sánh hai phương pháp (huấn luyện cơ sở và distillation), đồ án chọn \textbf{phương pháp huấn luyện cơ sở} và sử dụng mô hình \texttt{fire\_detection\_best.pth} (validation accuracy 98{,}5\%, validation loss 0{,}156) cho triển khai; lý do và kết quả chứng minh đã nêu ở mục trên.
+  \item Mô hình EfficientNet-Lite0 đạt độ chính xác cao cho bài toán phát hiện cháy/không cháy và phù hợp triển khai trên thiết bị biên (cùng kích thước, độ trễ cho dù huấn luyện theo cách nào).
+  \item Edge AI mang lại lợi thế rõ rệt về độ trễ, băng thông và chi phí so với xử lý trên đám mây;
+  \item Kiến trúc hệ thống Edge--Ground--Cloud giúp đảm bảo tính mở rộng, khả năng hoạt động offline và trải nghiệm người dùng tốt thông qua dashboard/web/mobile.
+\end{itemize}
+
+%============================
+% CHƯƠNG 5: KẾT LUẬN
+%============================
+\chapter{Kết luận}
+
+\section{Tổng kết}
+
+Đồ án đã xây dựng và hiện thực một hệ thống phát hiện cháy rừng thời gian thực dựa trên Edge AI, bao gồm:
+\begin{itemize}
+  \item Thiết kế và huấn luyện mô hình học sâu EfficientNet-Lite0 cho bài toán phân loại cháy/không cháy; sau khi so sánh hai phương pháp (huấn luyện cơ sở và distillation), đồ án chọn phương pháp huấn luyện cơ sở và sử dụng mô hình \texttt{fire\_detection\_best.pth} (98{,}5\% accuracy, loss thấp hơn) cho triển khai;
+  \item Xây dựng pipeline từ chuẩn bị dữ liệu, huấn luyện, kiểm thử đến xuất mô hình (TorchScript/TensorFlow Lite) phục vụ triển khai nhúng;
+  \item Thiết kế ứng dụng C++ xử lý video thời gian thực trên PC, làm cơ sở để kiểm chứng pipeline và tối ưu tiền xử lý/hậu xử lý;
+  \item Đề xuất kiến trúc hệ thống Edge--Ground--Cloud toàn diện, chỉ truyền alert thay vì truyền toàn bộ video, giúp giảm mạnh băng thông và chi phí;
+  \item Khảo sát và thiết kế thí nghiệm knowledge distillation nhằm nâng cao hiệu năng mô hình nhẹ trong khi vẫn đảm bảo ràng buộc phần cứng.
+\end{itemize}
+
+Kết quả đánh giá cho thấy hệ thống đạt:
+\begin{itemize}
+  \item Validation accuracy 98{,}5\% với mô hình đã chọn (huấn luyện cơ sở, \texttt{fire\_detection\_best.pth});
+  \item Độ trễ end-to-end 2--5 giây;
+  \item Mức băng thông tiết kiệm tới 99{,}998\% so với truyền video liên tục.
+\end{itemize}
+
+Đồ án đã so sánh hai phương pháp huấn luyện và \textbf{chọn phương pháp huấn luyện cơ sở}: mô hình \texttt{fire\_detection\_best.pth} đạt cùng 98{,}5\% accuracy với mô hình distilled nhưng có validation loss thấp hơn (0{,}156 so với 0{,}463), quy trình đơn giản và tiết kiệm tài nguyên hơn. Chi tiết so sánh và kết quả chứng minh được nêu ở Chương 4.
+
+\section{Hạn chế và hướng phát triển}
+
+\subsection{Hạn chế}
+
+Một số hạn chế hiện tại:
+\begin{itemize}
+  \item Phần triển khai firmware ESP32 và tích hợp TensorFlow Lite Micro mới dừng ở mức thiết kế, cần thêm thời gian để hoàn thiện và thử nghiệm thực tế;
+  \item Một số kịch bản môi trường khó (ban đêm, sương mù dày, khói mỏng) vẫn còn tỷ lệ nhầm lẫn nhất định;
+  \item Hệ thống chưa tích hợp đầy đủ các thành phần cloud (API, dashboard, notification) ở mức sản phẩm hoàn chỉnh;
+  \item Các thí nghiệm knowledge distillation mới ở mức thử nghiệm, cần mở rộng thêm để khẳng định lợi ích trong mọi điều kiện.
+\end{itemize}
+
+\subsection{Hướng phát triển}
+
+Trong tương lai, hệ thống có thể được mở rộng theo các hướng:
+\begin{itemize}
+  \item Hoàn thiện firmware ESP32-S3, tối ưu bộ nhớ và năng lượng, triển khai thực tế trên các trạm quan sát rừng;
+  \item Mở rộng tập dữ liệu với nhiều điều kiện thời tiết, địa hình và khu vực địa lý khác nhau, bao gồm cả dữ liệu từ UAV (drone);
+  \item Tích hợp thêm cảm biến (nhiệt độ, độ ẩm, cảm biến khói) để xây dựng hệ thống đa cảm biến tăng độ tin cậy;
+  \item Xây dựng dashboard web và ứng dụng mobile hoàn thiện, hỗ trợ quản lý nhiều thiết bị, nhiều khu vực và thống kê lịch sử chi tiết;
+  \item Nghiên cứu các kiến trúc mô hình mới (Vision Transformer nhẹ, ConvNeXt-Tiny, v.v.) và các kỹ thuật tối ưu như pruning, quantization-aware training, distillation đa tầng;
+  \item Tiến hành thử nghiệm thực địa tại các khu rừng, đo đạc chi tiết về độ bền thiết bị, độ tin cậy liên lạc và khả năng phát hiện trong điều kiện thực tế.
+\end{itemize}
+
+%============================
+% TÀI LIỆU THAM KHẢO
+%============================
+\begin{thebibliography}{9}
+
+\bibitem{tan2019efficientnet}
+Mingxing Tan and Quoc V. Le,
+``EfficientNet: Rethinking Model Scaling for Convolutional Neural Networks'',
+in \emph{Proceedings of the 36th International Conference on Machine Learning (ICML)}, 2019.
+
+\bibitem{hinton2015distilling}
+Geoffrey Hinton, Oriol Vinyals and Jeff Dean,
+``Distilling the Knowledge in a Neural Network'',
+arXiv preprint arXiv:1503.02531, 2015.
+
+\bibitem{gou2021survey}
+Jiawei Gou, Baosheng Yu, Stephen J. Maybank and Dacheng Tao,
+``Knowledge Distillation: A Survey'',
+\emph{International Journal of Computer Vision}, 129, 1789--1819, 2021.
+
+\bibitem{espidf}
+Espressif Systems,
+``ESP-IDF Programming Guide'',
+\url{https://docs.espressif.com}.
+
+\bibitem{tflite}
+TensorFlow Lite Micro,
+``TensorFlow Lite for Microcontrollers'',
+\url{https://www.tensorflow.org/lite/microcontrollers}.
+
+\end{thebibliography}
+
+\end{document}
+

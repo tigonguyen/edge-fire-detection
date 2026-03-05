@@ -284,7 +284,7 @@ model/data/raw/fire_dataset/
 The training uses **standard transfer learning** (NOT knowledge distillation) with the following approach:
 
 #### Training Method
-- **Base Model**: EfficientNet-B0 pretrained on ImageNet
+- **Base Model**: EfficientNet-Lite0 pretrained on ImageNet
 - **Fine-tuning Strategy**: Full model fine-tuning (all parameters trainable)
 - **Loss Function**: Cross-Entropy Loss
 - **Optimizer**: Adam with weight decay (1e-4)
@@ -321,11 +321,11 @@ python model/train_fire_detection.py
    - Normalization: ImageNet mean/std values
 
 2. **Model Architecture**:
-   - EfficientNet-B0 from timm library
+   - EfficientNet-Lite0 from timm library
    - Pretrained weights loaded from ImageNet
    - Final classifier replaced for 2 classes (fire/normal)
-   - Total parameters: ~5.3M
-   - Model size: ~20 MB (FP32)
+   - Total parameters: ~4.6M
+   - Model size: ~18 MB (FP32)
 
 3. **Training Loop**:
    - Each epoch trains on all training batches
@@ -364,10 +364,10 @@ Classes: ['fire', 'normal']
    Batch size: 32
    Classes: ['fire', 'normal']
 
-🤖 Creating EfficientNet-B0 model...
-   Total parameters: 5,288,548
-   Trainable parameters: 5,288,548
-   Model size (FP32): ~20.16 MB
+🤖 Creating EfficientNet-Lite0 model...
+   Total parameters: ~4,600,000
+   Trainable parameters: ~4,600,000
+   Model size (FP32): ~18 MB
 
 ============================================================
 🚀 Starting training for 20 epochs...
@@ -682,18 +682,18 @@ A complete demonstration scenario showcasing the system's capabilities:
 
 **Training Method**:
 - **Approach**: Transfer learning with full fine-tuning
-- **Pre-trained Model**: EfficientNet-B0 from ImageNet
+- **Pre-trained Model**: EfficientNet-Lite0 from ImageNet
 - **Strategy**: All layers trainable from the start
 - **Loss**: Standard Cross-Entropy Loss (no distillation loss)
 - **Why not distillation?**: 
-  - EfficientNet-B0 is already optimized for edge devices
+  - EfficientNet-Lite0 is already optimized for edge devices
   - Direct fine-tuning on fire detection data is more effective for this specialized task
   - Model size (~5 MB INT8) already fits ESP32-S3 constraints
   - Distillation is typically used to compress larger models (ResNet50 → MobileNet), but we start with an efficient architecture
 
 **If you wanted to use distillation**, you would:
 1. Train a larger teacher model (e.g., EfficientNet-B3 or ResNet50)
-2. Use the teacher's soft predictions to train the student (EfficientNet-B0)
+2. Use the teacher's soft predictions to train the student (EfficientNet-Lite0)
 3. Combine distillation loss with hard label loss
 4. However, for this project, direct training achieves excellent results
 
