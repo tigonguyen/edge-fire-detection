@@ -1,38 +1,114 @@
-# Edge AI Wildfire Detection System
+# Hệ thống phát hiện cháy rừng bằng Edge AI
 
-> Automated forest fire detection using Edge AI on ESP32 microcontrollers with real-time alerting capabilities
+> Phát hiện cháy rừng tự động bằng Edge AI với khả năng cảnh báo thời gian thực
 
-## Overview
+## Tổng quan
 
-This project implements an intelligent wildfire detection system that leverages Edge AI to detect fires and smoke in real-time directly on resource-constrained ESP32 devices. The system processes camera frames on-device using a quantized EfficientNet-Lite model, eliminating the need for continuous video streaming to the cloud. When fire or smoke is detected, alerts are sent to a ground station which relays information to a cloud platform for visualization, notification, and historical analysis.
+Dự án triển khai hệ thống phát hiện cháy rừng thông minh, tận dụng Edge AI để phát hiện lửa và khói theo thời gian thực trực tiếp trên thiết bị biên (hoặc backend). Hệ thống xử lý khung hình camera bằng mô hình EfficientNet-Lite (có thể lượng tử hóa), không cần truyền video liên tục lên đám mây. Khi phát hiện lửa hoặc khói, cảnh báo được gửi tới trạm mặt đất và chuyển tiếp lên nền tảng đám mây để hiển thị, thông báo và phân tích lịch sử.
 
-**Key Innovation**: By running inference on the edge device rather than streaming video to cloud servers, the system achieves ultra-low latency (2-5 seconds), minimal bandwidth usage (only alerts, not video), and offline operation capability - critical for remote forest monitoring.
+**Điểm nổi bật**: Chạy suy luận tại thiết bị biên/backend thay vì streaming video lên server đám mây, hệ thống đạt độ trễ rất thấp (2–5 giây), sử dụng băng thông tối thiểu (chỉ gửi cảnh báo, không gửi video) và có thể hoạt động ngoại tuyến — quan trọng cho giám sát rừng ở vùng xa.
 
-## System Architecture
+---
+
+## Tổng hợp nội dung đồ án (Project Summary)
+
+Phần này tóm tắt toàn bộ nội dung đồ án từ đầu đến thời điểm hiện tại.
+
+### 1. Tên và mục tiêu đồ án
+
+- **Tên**: Hệ thống phát hiện cháy rừng thời gian thực dựa trên Edge AI và triển khai backend container.
+- **Mục tiêu chính**:
+  - Xây dựng mô hình phân loại ảnh **fire / normal** (hai lớp) đạt độ chính xác cao.
+  - Triển khai mô hình trên **backend C++** (ONNX Runtime), lượng tử INT8 (mục tiêu mất mát accuracy &lt; 2%), export ONNX và đóng gói **Docker** (kích thước nhỏ).
+  - Kiến trúc end-to-end: Backend suy luận → Trạm mặt đất → Nền tảng đám mây (MQTT/HTTP, dashboard, thông báo).
+
+### 2. Kiến trúc hệ thống
+
+- **Backend suy luận (C++/ONNX)**: Dịch vụ HTTP (cổng 8080) nhận ảnh 224×224 RGB (raw 150528 byte hoặc base64), chạy mô hình EfficientNet-Lite0 (ONNX), trả JSON `{"class":"fire"|"normal","confidence":float}`. Có thể triển khai tại biên hoặc server, đóng gói bằng Docker multi-stage.
+- **Trạm mặt đất**: Nhận cảnh báo qua MQTT/HTTP, lưu trữ, hiển thị bản đồ, chuyển tiếp lên cloud (thiết kế trong `ground_station/`).
+- **Nền tảng đám mây**: Lưu trữ cảnh báo, dashboard web, gửi thông báo (thiết kế trong `cloud/`).
+
+### 3. Mô hình và huấn luyện
+
+- **Kiến trúc**: **EfficientNet-Lite0** (timm), pretrained ImageNet, fine-tune 2 lớp (fire, normal).
+- **Hai phương pháp đã thực hiện**:
+  1. **Huấn luyện cơ sở (baseline)**: Fine-tune trực tiếp EfficientNet-Lite0 với Cross-Entropy; checkpoint `fire_detection_best.pth`.
+  2. **Huấn luyện student (knowledge distillation)**: Teacher EfficientNet-B3 → student EfficientNet-Lite0 với loss CE + KL; checkpoint `experiments/knowledge_distillation/models/student_distilled_best.pth`.
+- **Lựa chọn đồ án**: **Chỉ sử dụng một phương pháp — huấn luyện cơ sở** và mô hình `fire_detection_best.pth`.
+- **Lý do và kết quả chứng minh** (từ checkpoint):
+  - Cả hai đều đạt **validation accuracy 98,5%**.
+  - **Validation loss**: baseline **0,156** vs distillation **0,463** (thấp hơn = ổn định hơn).
+  - Baseline: 1 giai đoạn, đơn giản, tiết kiệm tài nguyên; distillation: 2 giai đoạn (teacher + student), tốn thêm GPU/thời gian.
+  - Cùng kiến trúc Lite0 nên kích thước và độ trễ triển khai giống nhau → không có lợi thế triển khai khi chọn distillation trong trường hợp này.
+
+### 4. Pipeline từ huấn luyện đến triển khai
+
+1. **Dữ liệu**: `model/data/fire_dataset/` (train/val, fire/normal); tổ chức bằng `model/organize_dataset.py`.
+2. **Huấn luyện**: `model/train_fire_detection.py` (batch 32, 20 epochs, Adam, CosineAnnealing) → lưu `fire_detection_best.pth`.
+3. **Lượng tử và export**: `quantize_int8.py` — load checkpoint, thử dynamic INT8 (nếu môi trường hỗ trợ), kiểm tra accuracy drop &lt; 2%; export ONNX và TorchScript vào `app/model/` (`fire_detection.onnx`, `fire_detection_scripted.pt`). Trên một số môi trường (ví dụ Python 3.13, thiếu kernel quantized) script fallback FP32 nhưng vẫn export ONNX.
+4. **Backend C++**: `app/` — CMake + ONNX Runtime, `src/main.cpp` (HTTP server, preprocess ImageNet, inference), `include/preprocess.h`. Build: `cd app/build && cmake .. && make`. Chạy: `./fire_backend /path/to/fire_detection.onnx`.
+5. **Container**: `app/Dockerfile` — multi-stage build (Ubuntu + ONNX Runtime), image runtime nhỏ, EXPOSE 8080. Chạy với volume mount `app/model` chứa file ONNX.
+
+### 5. Chứng minh tương thích thiết bị biên / backend
+
+- Script **`edge_compatibility_comparison.py`** (tiếng Anh): đọc checkpoint baseline và student, cấu hình từ `model/train_fire_detection.py` và `experiments/knowledge_distillation/config.py`, so sánh:
+  - Kiến trúc (EfficientNet-Lite0 hay không),
+  - Số tham số, kích thước FP32/INT8, RAM suy luận,
+  - Epochs, batch size, validation accuracy/loss,
+  - Kết luận tương thích triển khai (backend/container).
+- Kết quả chi tiết ghi vào **`comparison_report.md`**. Chạy: `python edge_compatibility_comparison.py`.
+
+### 6. Cấu trúc repo chính (liên quan đồ án)
+
+| Thành phần | Mô tả ngắn |
+|------------|------------|
+| `fire_detection_best.pth` | Checkpoint mô hình được chọn (baseline, EfficientNet-Lite0) |
+| `model/train_fire_detection.py` | Script huấn luyện cơ sở (Lite0, 2 lớp) |
+| `model/test_trained_model.py` | Kiểm thử mô hình trên ảnh |
+| `quantize_int8.py` | Lượng tử INT8, export ONNX/TorchScript vào `app/model/` |
+| `app/` | Backend C++ (ONNX Runtime), Dockerfile, `preprocess.h`, `main.cpp` |
+| `app/model/` | Thư mục chứa `fire_detection.onnx` (sau khi chạy quantize_int8.py) |
+| `experiments/knowledge_distillation/` | Thí nghiệm distillation (teacher B3, student Lite0); đồ án không chọn phương pháp này |
+| `edge_compatibility_comparison.py` | So sánh chi tiết baseline vs student, sinh `comparison_report.md` |
+| `comparison_report.md` | Báo cáo so sánh (kiến trúc, kích thước, RAM, cấu hình, accuracy/loss) |
+| `report.tex` | Báo cáo đồ án LaTeX (5 chương, tiếng Việt, đã bỏ phần ESP, thêm INT8/export/backend/container) |
+| `EDGE_EVALUATION.md` | Tài liệu đánh giá triển khai edge |
+
+### 7. Kết quả chính (tại thời điểm hiện tại)
+
+- **Validation accuracy**: 98,5% (mô hình baseline `fire_detection_best.pth`).
+- **Validation loss**: 0,156 (baseline) so với 0,463 (student distilled) — đồ án chọn baseline.
+- **Kiến trúc triển khai**: EfficientNet-Lite0, ~5,3 MB INT8, ~1,5 MB RAM suy luận, phù hợp backend/container.
+- **Export**: ONNX và TorchScript cho backend C++; Docker image cho dịch vụ inference nhỏ gọn.
+- **Báo cáo**: `report.tex` tổng hợp lý do chọn huấn luyện cơ sở, so sánh hai phương pháp, INT8, export, backend C++, Docker và các khía cạnh chứng minh tương thích thiết bị biên/backend.
+
+---
+
+## Kiến trúc hệ thống
 
 ```mermaid
 graph TB
-    subgraph edge[Edge Device - ESP32-S3]
-        camera[ESP32-CAM<br/>OV2640 Module] -->|Capture<br/>224x224 RGB| preprocess[Preprocessing<br/>Normalize & Resize]
-        preprocess --> inference[EfficientNet-Lite0<br/>INT8 Quantized]
-        inference --> detection[Fire/Smoke<br/>Detection Logic]
-        detection -->|Confidence > 0.8| alert[Alert Generator]
-        alert -->|WiFi/LoRa| mqtt[MQTT/HTTP<br/>Publisher]
+    subgraph edge[Thiết bị biên / Backend]
+        camera[Camera / Client] -->|Ảnh 224x224 RGB| preprocess[Tiền xử lý<br/>Chuẩn hóa]
+        preprocess --> inference[EfficientNet-Lite0<br/>ONNX / INT8]
+        inference --> detection[Logic phát hiện<br/>Lửa/Khói]
+        detection -->|Độ tin cậy > 0.8| alert[Tạo cảnh báo]
+        alert -->|HTTP/MQTT| mqtt[Publisher<br/>MQTT/HTTP]
     end
     
-    subgraph ground[Ground Station]
-        mqtt --> receiver[Alert Receiver<br/>MQTT Subscriber]
-        receiver --> storage[Local Storage<br/>SQLite/PostgreSQL]
-        receiver --> relay[Cloud Relay<br/>HTTP API]
-        receiver --> map[Real-time<br/>Map Viewer]
-        storage -.->|Offline Queue| relay
+    subgraph ground[Trạm mặt đất]
+        mqtt --> receiver[Nhận cảnh báo<br/>MQTT Subscriber]
+        receiver --> storage[Lưu trữ cục bộ<br/>SQLite/PostgreSQL]
+        receiver --> relay[Chuyển tiếp Cloud<br/>HTTP API]
+        receiver --> map[Xem bản đồ<br/>thời gian thực]
+        storage -.->|Hàng đợi offline| relay
     end
     
-    subgraph cloud[Cloud Platform]
-        relay --> database[Alert Database<br/>PostgreSQL]
-        database --> dashboard[Web Dashboard<br/>React/Vue.js]
-        database --> notification[Push Notifications<br/>Firebase/Twilio]
-        database --> analytics[Analytics &<br/>Visualization]
+    subgraph cloud[Nền tảng đám mây]
+        relay --> database[Cơ sở dữ liệu<br/>PostgreSQL]
+        database --> dashboard[Dashboard Web<br/>React/Vue.js]
+        database --> notification[Thông báo đẩy<br/>Firebase/Twilio]
+        database --> analytics[Phân tích &<br/>Trực quan hóa]
     end
     
     style edge fill:#e1f5e1
@@ -40,260 +116,233 @@ graph TB
     style cloud fill:#f5e1e1
 ```
 
-## Why EfficientNet-Lite Over ResNet?
+## Tại sao chọn EfficientNet-Lite thay vì ResNet?
 
-The choice of model architecture is critical for successful deployment on ESP32 devices with limited computational resources.
+Lựa chọn kiến trúc mô hình rất quan trọng để triển khai thành công trên thiết bị biên có tài nguyên hạn chế.
 
-### Model Comparison
+### So sánh mô hình
 
-| Model | Size | RAM Usage | FP32 Latency | INT8 Latency | ESP32-S3 Compatible |
-|-------|------|-----------|--------------|--------------|---------------------|
-| ResNet18 | 44 MB | 15 MB | 180 ms | 90 ms | ❌ Too large |
-| ResNet50 | 98 MB | 35 MB | 350 ms | 175 ms | ❌ Too large |
-| MobileNetV2 | 14 MB | 3 MB | 45 ms | 25 ms | ⚠️ Marginal |
-| MobileNetV3-Small | 5.5 MB | 2 MB | 35 ms | 18 ms | ✅ Good |
-| **EfficientNet-Lite0** | **5.3 MB** | **1.5 MB** | **40 ms** | **22 ms** | **✅ Optimal** |
-| EfficientNet-Lite1 | 7.8 MB | 2.5 MB | 65 ms | 35 ms | ⚠️ Slower |
+| Mô hình | Kích thước | RAM | Độ trễ FP32 | Độ trễ INT8 | Phù hợp thiết bị biên |
+|---------|------------|-----|-------------|-------------|------------------------|
+| ResNet18 | 44 MB | 15 MB | 180 ms | 90 ms | ❌ Quá lớn |
+| ResNet50 | 98 MB | 35 MB | 350 ms | 175 ms | ❌ Quá lớn |
+| MobileNetV2 | 14 MB | 3 MB | 45 ms | 25 ms | ⚠️ Giới hạn |
+| MobileNetV3-Small | 5,5 MB | 2 MB | 35 ms | 18 ms | ✅ Tốt |
+| **EfficientNet-Lite0** | **5,3 MB** | **1,5 MB** | **40 ms** | **22 ms** | **✅ Tối ưu** |
+| EfficientNet-Lite1 | 7,8 MB | 2,5 MB | 65 ms | 35 ms | ⚠️ Chậm hơn |
 
-### Why EfficientNet-Lite0 is Optimal
+### Vì sao EfficientNet-Lite0 tối ưu
 
-1. **Model Size**: ~5 MB vs ResNet18's 44 MB
-   - Fits in ESP32-S3's external flash (4-16 MB)
-   - ResNet requires expensive hardware (Jetson Nano, RPi 4)
+1. **Kích thước mô hình**: ~5 MB so với 44 MB của ResNet18 — vừa bộ nhớ flash 4–16 MB của nhiều thiết bị biên; ResNet đòi hỏi phần cứng đắt tiền (Jetson Nano, RPi 4).
+2. **Bộ nhớ**: 1–2 MB RAM khi lượng tử INT8 — đủ cho triển khai backend/container; ResNet18 cần 10–15 MB.
+3. **Tốc độ suy luận**: Thiết kế cho thiết bị biên — toán tử tối ưu cho mobile, ~20–40 ms mỗi khung hình; ResNet không tối ưu cho suy luận trên thiết bị nhúng.
+4. **Độ chính xác**: Compound scaling — đạt độ chính xác tương đương với ít tham số hơn nhiều, cân bằng depth/width/resolution.
+5. **Thân thiện lượng tử**: Tối ưu sẵn cho INT8 — EfficientNet-Lite thiết kế cho lượng tử sau huấn luyện, mất mát độ chính xác thường &lt;2%; ResNet cần quantization-aware training cẩn thận.
 
-2. **Memory Footprint**: 1-2 MB RAM when quantized (INT8)
-   - ESP32-S3 has 8 MB PSRAM - sufficient headroom
-   - ResNet18 needs 10-15 MB - impossible on ESP32
+### Hạn chế của ResNet cho thiết bị biên
 
-3. **Inference Speed**: Designed for edge devices
-   - Optimized mobile operators
-   - ~20-40 ms inference time on ESP32-S3
-   - ResNet not optimized for mobile inference
+- **Kích thước**: Mô hình 44+ MB không vừa flash ESP32 thông thường.
+- **Bộ nhớ**: Nhu cầu RAM 15+ MB vượt PSRAM 8 MB của ESP32-S3.
+- **Chi phí**: Cần thiết bị đắt tiền (100–300 USD), làm giảm lợi ích triển khai biên.
+- **Điện năng**: Nhu cầu tính toán cao hơn làm tăng tiêu thụ điện.
+- **Tối ưu hóa**: Không thiết kế cho suy luận mobile/edge.
 
-4. **Accuracy**: Compound scaling approach
-   - Achieves comparable accuracy with 10x fewer parameters
-   - Balanced depth, width, and resolution scaling
+**Kết luận**: EfficientNet-Lite0 mang lại sự cân bằng tốt nhất giữa độ chính xác, tốc độ và hiệu quả tài nguyên cho triển khai backend/thiết bị biên, giúp phát hiện cháy rừng thời gian thực khả thi trên thiết bị chi phí thấp.
 
-5. **Quantization-Friendly**: Pre-optimized for INT8
-   - EfficientNet-Lite variants designed for post-training quantization
-   - Minimal accuracy loss (typically <2%) with INT8
-   - ResNet requires careful quantization-aware training
+## Yêu cầu phần cứng
 
-### ResNet Challenges for ESP32
+### Thiết bị biên / Backend
+- **Backend inference**: Server hoặc container chạy C++/ONNX Runtime; có thể triển khai trên Raspberry Pi, server local hoặc cloud.
+- **Camera/Client**: Gửi ảnh 224×224 RGB tới backend qua HTTP (raw hoặc base64).
+- **Kết nối**: WiFi hoặc mạng có dây tùy môi trường triển khai.
 
-- **Size**: 44+ MB model cannot fit in standard ESP32 flash
-- **Memory**: 15+ MB RAM requirement exceeds ESP32-S3's 8 MB PSRAM
-- **Cost**: Would require expensive devices ($100-300) defeating edge deployment benefits
-- **Power**: Higher compute requirements increase power consumption
-- **Optimization**: Not designed for mobile/edge inference
+### Trạm mặt đất (chọn một)
+- **Tùy chọn 1**: Raspberry Pi 4 (4–8 GB RAM) — khuyến nghị triển khai thực địa.
+- **Tùy chọn 2**: Máy chủ/PC local — cho phát triển và kiểm thử.
+- **Tùy chọn 3**: Chỉ đám mây — bỏ trạm mặt đất local, client kết nối trực tiếp lên cloud.
 
-**Conclusion**: EfficientNet-Lite0 provides the best balance of accuracy, speed, and resource efficiency for ESP32-S3 deployment, making real-time wildfire detection feasible on low-cost edge devices.
+### Nền tảng đám mây
+- Bất kỳ nhà cung cấp cloud nào (AWS, Google Cloud, Azure, DigitalOcean).
+- Yêu cầu tối thiểu: 1 vCPU, 1 GB RAM cho API server.
+- Cơ sở dữ liệu: PostgreSQL hoặc MongoDB.
+- Tùy chọn: Firebase cho thông báo đẩy.
 
-## Hardware Requirements
+## Tính năng chính
 
-### Edge Device
-- **Microcontroller**: ESP32-S3 with 8 MB PSRAM (e.g., ESP32-S3-DevKitC-1)
-- **Camera Module**: ESP32-CAM or OV2640 compatible camera
-- **Flash**: 4-16 MB external flash for model storage
-- **Connectivity**: WiFi (built-in) or optional LoRa module for long-range
-- **Power**: Solar panel + battery for remote deployment
-- **Enclosure**: Weatherproof case for outdoor installation
+### 🚀 Phát hiện thời gian thực
+- Suy luận tại backend/thiết bị: 20–40 ms mỗi khung hình.
+- Độ trễ end-to-end: 2–5 giây (chụp → suy luận → cảnh báo).
+- Không phụ thuộc mạng cho bước phát hiện.
 
-### Ground Station (Choose One)
-- **Option 1**: Raspberry Pi 4 (4-8 GB RAM) - recommended for field deployment
-- **Option 2**: Local server/PC - for development and testing
-- **Option 3**: Cloud-only - skip local ground station, ESP32 connects directly to cloud
+### 📡 Hiệu quả băng thông
+- Chỉ gửi cảnh báo (~1 KB) thay vì stream video (5–10 Mbps).
+- Giảm ~99,9% băng thông so với streaming lên đám mây.
+- Tiết kiệm chi phí cho vùng xa, kết nối hạn chế.
 
-### Cloud Platform
-- Any cloud provider (AWS, Google Cloud, Azure, DigitalOcean)
-- Minimal requirements: 1 vCPU, 1 GB RAM for API server
-- Database: PostgreSQL or MongoDB
-- Optional: Firebase for push notifications
+### 🔌 Hoạt động ngoại tuyến
+- Hoạt động đầy đủ khi không có internet.
+- Trạm mặt đất lưu cảnh báo khi mất mạng.
+- Đồng bộ tự động khi kết nối trở lại.
 
-## Key Features
+### 🎯 Độ chính xác cao
+- Huấn luyện trên tập dữ liệu lửa/khói đa dạng.
+- Xử lý nhiều kịch bản: ban ngày, thiếu sáng, sương mù, chỉ khói.
+- Giảm dương tính giả bằng ngưỡng độ tin cậy và làm mượt theo thời gian.
 
-### 🚀 Real-Time Detection
-- On-device inference: 20-40 ms per frame
-- End-to-end latency: 2-5 seconds (capture → inference → alert)
-- No network dependency for detection
+### 📊 Dashboard thời gian thực
+- Bản đồ trực tiếp với điểm đánh dấu phát hiện.
+- Tọa độ GPS và ảnh chụp.
+- Điểm độ tin cậy và thời gian.
+- Dữ liệu lịch sử và phân tích.
+- Thông báo đẩy tới thiết bị di động.
 
-### 📡 Bandwidth Efficiency
-- Send only alerts (~1 KB) instead of video streams (5-10 Mbps)
-- 99.9% bandwidth reduction compared to cloud streaming
-- Cost-effective for remote locations with limited connectivity
+## Edge AI so với xử lý đám mây truyền thống
 
-### 🔌 Offline Operation
-- Fully functional without internet connection
-- Local ground station stores alerts during network outages
-- Automatic sync when connection restored
+| Chỉ số | Edge AI (hệ thống này) | Streaming đám mây truyền thống |
+|--------|------------------------|--------------------------------|
+| **Độ trễ** | 2–5 giây | 30–60 giây |
+| **Băng thông** | 1 KB/cảnh báo | 5–10 Mbps liên tục |
+| **Hoạt động offline** | ✅ Có | ❌ Không |
+| **Tiêu thụ điện** | Thấp (gián đoạn) | Cao (streaming liên tục) |
+| **Riêng tư** | Cao (không tải video) | Thấp (tải toàn bộ video) |
+| **Chi phí mạng** | 0–5 USD/tháng | 50–200 USD/tháng |
+| **Hạ tầng** | Tối thiểu | Tài nguyên cloud đáng kể |
+| **Khả năng mở rộng** | Cao (phân tán) | Giới hạn bởi băng thông |
+| **Độ tin cậy** | Cao (nút độc lập) | Phụ thuộc kết nối |
 
-### 🎯 High Accuracy
-- Trained on diverse fire/smoke datasets
-- Handles multiple scenarios: daylight, low-light, fog, smoke-only
-- False positive reduction through confidence thresholding and temporal smoothing
+**Ưu điểm chính**:
+- ⚡ Thời gian phản hồi **nhanh hơn ~10 lần**.
+- 💾 Sử dụng băng thông **ít hơn ~99,9%**.
+- 💰 Chi phí vận hành **thấp hơn ~90%**.
+- 🔒 **Riêng tư hơn** — video không rời thiết bị.
+- 🌲 **Hoạt động ở vùng xa** không cần internet ổn định.
 
-### 📊 Real-Time Dashboard
-- Live map view with detection markers
-- GPS coordinates and captured images
-- Confidence scores and timestamps
-- Historical data and analytics
-- Push notifications to mobile devices
-
-## Edge AI vs Traditional Cloud Processing
-
-| Metric | Edge AI (This System) | Traditional Cloud Streaming |
-|--------|----------------------|----------------------------|
-| **Latency** | 2-5 seconds | 30-60 seconds |
-| **Bandwidth** | 1 KB/alert | 5-10 Mbps continuous |
-| **Offline Operation** | ✅ Yes | ❌ No |
-| **Power Consumption** | Low (intermittent) | High (constant streaming) |
-| **Privacy** | High (no video upload) | Low (full video upload) |
-| **Network Cost** | $0-5/month | $50-200/month |
-| **Infrastructure** | Minimal | Significant cloud resources |
-| **Scalability** | High (distributed) | Limited by bandwidth |
-| **Reliability** | High (independent nodes) | Dependent on connectivity |
-
-**Key Advantages**:
-- ⚡ **10x faster** response time
-- 💾 **99.9% less** bandwidth usage
-- 💰 **90% lower** operational costs
-- 🔒 **Better privacy** - no video leaves the device
-- 🌲 **Works in remote areas** without reliable internet
-
-## Project Structure
+## Cấu trúc dự án
 
 ```
 edge-fire-detection/
-├── README.md                      # This file
-├── requirements.txt               # Python dependencies
-├── test_model.py                  # Model loading and testing script
-├── test_video_frames.py          # Video frame testing script
-├── export_torchscript.py         # Export model to TorchScript for C++
+├── README.md                      # File này
+├── requirements.txt               # Phụ thuộc Python
+├── test_model.py                  # Script tải và kiểm thử mô hình
+├── test_video_frames.py           # Kiểm thử trên khung hình video
+├── export_torchscript.py          # Export mô hình sang TorchScript
+├── quantize_int8.py               # Lượng tử INT8, export ONNX vào app/model/
+├── edge_compatibility_comparison.py  # So sánh baseline vs student, sinh comparison_report.md
+├── comparison_report.md           # Báo cáo so sánh chi tiết
+├── report.tex                     # Báo cáo đồ án LaTeX
 │
-├── model/                        # Model training
-│   ├── train_fire_detection.py  # Training script
-│   ├── test_trained_model.py    # Test trained model
-│   ├── organize_dataset.py      # Dataset organization
-│   └── data/                    # Dataset directory
+├── model/                         # Huấn luyện mô hình
+│   ├── train_fire_detection.py    # Script huấn luyện (baseline)
+│   ├── test_trained_model.py      # Kiểm thử mô hình đã huấn luyện
+│   ├── organize_dataset.py        # Tổ chức dữ liệu
+│   └── data/                      # Thư mục dữ liệu
 │
-├── app/                         # C++ Application (Video Stream Processing)
-│   ├── README.md                # C++ app documentation
-│   ├── QUICKSTART.md            # Quick start guide
-│   ├── CMakeLists.txt           # Build configuration
-│   ├── build.sh                 # Build script
+├── app/                           # Backend C++ (ONNX Runtime)
+│   ├── README.md                  # Tài liệu backend C++
+│   ├── CMakeLists.txt             # Cấu hình build
+│   ├── Dockerfile                 # Build image Docker
 │   ├── include/
-│   │   └── fire_detector.h      # FireDetector class header
+│   │   └── preprocess.h           # Chuẩn hóa ImageNet, preprocess_rgb224
 │   ├── src/
-│   │   ├── main.cpp             # Main application
-│   │   └── fire_detector.cpp   # Detection implementation
-│   └── build/                   # Build output directory
+│   │   └── main.cpp               # HTTP server, inference ONNX
+│   └── model/                     # Chứa fire_detection.onnx (sau quantize_int8.py)
 │
-├── edge/                         # ESP32 edge device code (planned)
-│   ├── main/                     # ESP-IDF main component
-│   │   ├── main.c                # Main application
-│   │   ├── camera_handler.c      # Camera capture
-│   │   ├── inference_engine.c    # TFLite Micro inference
-│   │   └── mqtt_client.c         # MQTT alert publisher
-│   ├── components/               # Custom ESP-IDF components
-│   └── README.md                 # ESP32 setup guide
+├── experiments/knowledge_distillation/  # Thí nghiệm distillation (không dùng cho triển khai)
+│   ├── config.py
+│   ├── train_teacher.py
+│   ├── train_student_distillation.py
+│   └── models/                    # teacher_best.pth, student_distilled_best.pth
 │
-├── ground_station/               # Ground station software (planned)
-│   ├── receiver.py               # MQTT alert receiver
-│   ├── relay.py                  # Cloud relay service
-│   ├── visualizer.py             # Real-time map viewer
-│   └── config.yaml               # Ground station configuration
+├── ground_station/                # Phần mềm trạm mặt đất (kế hoạch)
+│   ├── receiver.py                # Nhận cảnh báo MQTT
+│   ├── relay.py                   # Chuyển tiếp lên cloud
+│   ├── visualizer.py              # Xem bản đồ thời gian thực
+│   └── config.yaml                # Cấu hình trạm mặt đất
 │
-├── cloud/                        # Cloud platform (planned)
-│   ├── api/                      # REST API server
-│   │   ├── app.py                # FastAPI application
-│   │   ├── models.py             # Database models
-│   │   └── routes.py             # API endpoints
-│   ├── dashboard/                # Web dashboard
-│   │   ├── src/                  # React/Vue.js source
-│   │   └── public/               # Static assets
-│   └── notification/             # Push notification service
-│       └── fcm_sender.py         # Firebase Cloud Messaging
+├── cloud/                         # Nền tảng đám mây (kế hoạch)
+│   ├── api/                       # REST API server
+│   ├── dashboard/                 # Web dashboard
+│   └── notification/              # Dịch vụ thông báo đẩy
 │
-└── evaluation/                   # Performance evaluation (planned)
-    ├── benchmark_latency.py      # Latency measurement
-    ├── bandwidth_analysis.py     # Bandwidth comparison
-    └── accuracy_metrics.py       # Precision/Recall/F1
+└── evaluation/                    # Đánh giá hiệu năng (kế hoạch)
+    ├── benchmark_latency.py       # Đo độ trễ
+    ├── bandwidth_analysis.py      # So sánh băng thông
+    └── accuracy_metrics.py        # Precision/Recall/F1
 ```
 
-## Installation & Setup
+## Cài đặt và thiết lập
 
-### 1. Clone Repository
+### 1. Clone repository
 
 ```bash
 git clone https://github.com/yourusername/edge-fire-detection.git
 cd edge-fire-detection
 ```
 
-### 2. Python Environment Setup
+### 2. Thiết lập môi trường Python
 
 ```bash
-# Create virtual environment
+# Tạo môi trường ảo
 python3 -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+source venv/bin/activate  # Windows: venv\Scripts\activate
 
-# Install dependencies
+# Cài đặt phụ thuộc
 pip install -r requirements.txt
 ```
 
-### 3. Test Model Loading
+### 3. Kiểm thử tải mô hình
 
 ```bash
-# Run model test script to verify setup
+# Chạy script kiểm thử để xác minh cài đặt
 python test_model.py
 ```
 
-This will download EfficientNet-Lite0, run inference on a sample image, and verify the model works correctly.
+Script sẽ tải EfficientNet-Lite0, chạy suy luận trên ảnh mẫu và xác minh mô hình hoạt động đúng.
 
-### 4. Dataset Preparation
+### 4. Chuẩn bị dữ liệu
 
-The project uses a fire detection dataset organized into training and validation sets.
+Dự án dùng tập dữ liệu phát hiện cháy được tổ chức thành tập huấn luyện và kiểm định.
 
 ```bash
-# Organize the dataset (if you have raw images)
+# Tổ chức dữ liệu (nếu có ảnh thô)
 python model/organize_dataset.py
 ```
 
-This script will:
-- Split images into train/val sets (80/20 by default)
-- Organize into proper directory structure:
+Script sẽ:
+- Chia ảnh thành train/val (mặc định 80/20).
+- Tổ chức theo cấu trúc thư mục:
   ```
   model/data/fire_dataset/
   ├── train/
-  │   ├── fire/       # Fire images
-  │   └── normal/     # Non-fire images
+  │   ├── fire/       # Ảnh có lửa
+  │   └── normal/     # Ảnh bình thường
   └── val/
       ├── fire/
       └── normal/
   ```
 
-**Dataset Structure Expected**:
-Raw images should be placed in:
+**Cấu trúc dữ liệu thô**: Đặt ảnh vào:
 ```
 model/data/raw/fire_dataset/
-├── fire_images/     # All fire images
-└── non_fire_images/ # All non-fire images
+├── fire_images/       # Tất cả ảnh có lửa
+└── non_fire_images/   # Tất cả ảnh không lửa
 ```
 
-### 5. Model Training
+### 5. Huấn luyện mô hình
 
-The training uses **standard transfer learning** (NOT knowledge distillation) with the following approach:
+Huấn luyện dùng **transfer learning chuẩn** (huấn luyện cơ sở, không dùng knowledge distillation) với cách tiếp cận sau:
 
-#### Training Method
-- **Base Model**: EfficientNet-Lite0 pretrained on ImageNet
-- **Fine-tuning Strategy**: Full model fine-tuning (all parameters trainable)
-- **Loss Function**: Cross-Entropy Loss
-- **Optimizer**: Adam with weight decay (1e-4)
-- **Learning Rate Scheduler**: Cosine Annealing
-- **No Distillation**: This is a single-model training approach, not teacher-student distillation
+#### Phương pháp huấn luyện
+- **Mô hình nền**: EfficientNet-Lite0 pretrained trên ImageNet
+- **Chiến lược fine-tune**: Fine-tune toàn bộ mô hình (mọi tham số đều trainable)
+- **Hàm loss**: Cross-Entropy
+- **Optimizer**: Adam với weight decay (1e-4)
+- **Bộ điều chỉnh learning rate**: Cosine Annealing
+- **Không distillation**: Đây là huấn luyện một mô hình, không phải teacher–student
 
-#### Training Configuration
+#### Cấu hình huấn luyện
 
-Default hyperparameters in `model/train_fire_detection.py`:
+Siêu tham số mặc định trong `model/train_fire_detection.py`:
 ```python
 DATA_DIR = 'model/data/fire_dataset'
 BATCH_SIZE = 32
@@ -302,257 +351,175 @@ LEARNING_RATE = 0.001
 NUM_CLASSES = 2  # fire, normal
 ```
 
-#### Run Training
+#### Chạy huấn luyện
 
 ```bash
-# Activate virtual environment
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+# Kích hoạt môi trường ảo
+source venv/bin/activate  # Windows: venv\Scripts\activate
 
-# Start training
+# Bắt đầu huấn luyện
 python model/train_fire_detection.py
 ```
 
-#### Training Process
+#### Quy trình huấn luyện
 
-1. **Data Loading**:
-   - Training images: Data augmentation applied (random crop, flip, rotation, color jitter)
-   - Validation images: Only resize and center crop
-   - Image size: 224x224 RGB
-   - Normalization: ImageNet mean/std values
+1. **Tải dữ liệu**:
+   - Ảnh train: Áp dụng data augmentation (random crop, lật, xoay, color jitter)
+   - Ảnh val: Chỉ resize và center crop
+   - Kích thước ảnh: 224×224 RGB
+   - Chuẩn hóa: mean/std ImageNet
 
-2. **Model Architecture**:
-   - EfficientNet-Lite0 from timm library
-   - Pretrained weights loaded from ImageNet
-   - Final classifier replaced for 2 classes (fire/normal)
-   - Total parameters: ~4.6M
-   - Model size: ~18 MB (FP32)
+2. **Kiến trúc mô hình**:
+   - EfficientNet-Lite0 từ thư viện timm
+   - Trọng số pretrained từ ImageNet
+   - Lớp phân loại cuối thay cho 2 lớp (fire/normal)
+   - Tổng tham số: ~4,6M
+   - Kích thước mô hình: ~18 MB (FP32)
 
-3. **Training Loop**:
-   - Each epoch trains on all training batches
-   - Validation performed after each epoch
-   - Learning rate adjusted with cosine annealing
-   - Best model saved based on validation accuracy
-   - Progress bars show loss and accuracy in real-time
+3. **Vòng lặp huấn luyện**:
+   - Mỗi epoch huấn luyện trên toàn bộ batch train
+   - Validation sau mỗi epoch
+   - Learning rate điều chỉnh theo cosine annealing
+   - Lưu mô hình tốt nhất theo validation accuracy
+   - Thanh tiến trình hiển thị loss và accuracy theo thời gian thực
 
-4. **Output**:
-   - Best model saved to: `fire_detection_best.pth`
-   - Checkpoint includes:
-     - Model state dict
-     - Optimizer state
-     - Validation accuracy and loss
-     - Class names and number of classes
-     - Epoch number
+4. **Đầu ra**:
+   - Mô hình tốt nhất lưu tại: `fire_detection_best.pth`
+   - Checkpoint gồm: state dict mô hình, optimizer state, validation accuracy/loss, tên lớp, số lớp, số epoch
 
-#### Training Output Example
+#### Ví dụ đầu ra huấn luyện
 
 ```
 ============================================================
-🔥 Fire Detection Model Training
+🔥 Huấn luyện mô hình phát hiện cháy
 ============================================================
 
-📱 Using device: cuda
+📱 Thiết bị: cuda
    GPU: NVIDIA GeForce RTX 3080
 
-📦 Loading dataset from model/data/fire_dataset...
-Train dataset size: 800
-Val dataset size: 200
-Classes: ['fire', 'normal']
-
-📊 Dataset Info:
-   Training batches: 25
-   Validation batches: 7
-   Batch size: 32
-   Classes: ['fire', 'normal']
-
-🤖 Creating EfficientNet-Lite0 model...
-   Total parameters: ~4,600,000
-   Trainable parameters: ~4,600,000
-   Model size (FP32): ~18 MB
-
-============================================================
-🚀 Starting training for 20 epochs...
-============================================================
-
-Epoch 1 [Train]: 100%|████████| 25/25 [00:15<00:00]
-Epoch 1 [Val]:   100%|████████| 7/7 [00:02<00:00]
-
-────────────────────────────────────────────────────────────
-📊 Epoch 1/20 Results (Time: 18.3s)
-────────────────────────────────────────────────────────────
-  Train Loss: 0.3245 | Train Acc: 86.50%
-  Val Loss:   0.2156 | Val Acc:   91.00%
-  Class Accuracy:
-    fire: 89.50%
-    normal: 92.50%
-  Learning Rate: 0.000988
-  ✅ Saved best model (val_acc: 91.00%)
-────────────────────────────────────────────────────────────
+📦 Tải dữ liệu từ model/data/fire_dataset...
+   Kích thước train: 800
+   Kích thước val: 200
+   Lớp: ['fire', 'normal']
+...
+  ✅ Đã lưu mô hình tốt nhất (val_acc: 91.00%)
 ```
 
-#### Customizing Training
+#### Tùy chỉnh huấn luyện
 
-To modify training parameters, edit `model/train_fire_detection.py`:
+Để thay đổi tham số huấn luyện, sửa `model/train_fire_detection.py`:
 
 ```python
-# Configuration section (lines 15-20)
-DATA_DIR = 'model/data/fire_dataset'  # Dataset location
-BATCH_SIZE = 32                        # Batch size (adjust for GPU memory)
-NUM_EPOCHS = 20                        # Number of training epochs
-LEARNING_RATE = 0.001                  # Initial learning rate
-NUM_CLASSES = 2                        # Number of classes
+# Phần cấu hình (khoảng dòng 15-20)
+DATA_DIR = 'model/data/fire_dataset'  # Đường dẫn dữ liệu
+BATCH_SIZE = 32                        # Batch size (chỉnh theo RAM GPU)
+NUM_EPOCHS = 20                        # Số epoch
+LEARNING_RATE = 0.001                  # Learning rate ban đầu
+NUM_CLASSES = 2                        # Số lớp
 ```
 
-**Tips**:
-- Increase `NUM_EPOCHS` to 50-100 for better convergence
-- Reduce `BATCH_SIZE` if you encounter out-of-memory errors
-- Adjust `LEARNING_RATE` if training is unstable (try 0.0001)
-- Training takes ~20-30 minutes on GPU, 2-3 hours on CPU
+**Gợi ý**:
+- Tăng `NUM_EPOCHS` lên 50–100 để hội tụ tốt hơn.
+- Giảm `BATCH_SIZE` nếu gặp lỗi hết bộ nhớ.
+- Chỉnh `LEARNING_RATE` nếu huấn luyện không ổn định (thử 0.0001).
+- Huấn luyện mất ~20–30 phút trên GPU, 2–3 giờ trên CPU.
 
-### 6. Model Testing
+### 6. Kiểm thử mô hình
 
-After training, test the model on individual images:
+Sau khi huấn luyện, kiểm thử mô hình trên từng ảnh:
 
 ```bash
-# Test on a single image
+# Kiểm thử trên một ảnh
 python model/test_trained_model.py
 ```
 
-This will load the trained model and run inference on test images, displaying:
-- Predicted class (fire/normal)
-- Confidence score
-- Class probabilities
+Script sẽ tải mô hình đã huấn luyện và chạy suy luận trên ảnh kiểm thử, hiển thị: lớp dự đoán (fire/normal), điểm độ tin cậy, xác suất từng lớp.
 
-### 7. Model Quantization & Export
+### 7. Lượng tử và export mô hình
 
-*Note: Quantization scripts for INT8 conversion and TFLite export are planned for future implementation.*
-
-For ESP32 deployment, the model will need to be:
-1. Exported to ONNX format
-2. Converted to TensorFlow Lite
-3. Quantized to INT8 for optimal performance
-4. Integrated with TensorFlow Lite Micro
-
-### 8. Video Frame Testing
-
-#### Python Version (Quick Testing)
-
-Test the model on video frames using Python:
+Chạy `quantize_int8.py` để lượng tử INT8 (nếu môi trường hỗ trợ) và export ONNX/TorchScript vào `app/model/`:
 
 ```bash
-# Extract frames from video and run inference
+python quantize_int8.py
+```
+
+Kết quả: `app/model/fire_detection.onnx`, `app/model/fire_detection_scripted.pt`. Backend C++ dùng file ONNX. Trên một số môi trường (ví dụ thiếu kernel quantized) script fallback FP32 nhưng vẫn export ONNX.
+
+### 8. Kiểm thử khung hình video
+
+#### Phiên bản Python (kiểm thử nhanh)
+
+```bash
+# Trích khung từ video và chạy suy luận
 python test_video_frames.py
 ```
 
-This script:
-- Extracts frames from video files
-- Runs inference on each frame
-- Displays results with confidence scores
-- Useful for testing on drone footage or surveillance videos
+Script trích khung từ file video, chạy suy luận từng khung, hiển thị kết quả với điểm độ tin cậy — hữu ích cho footage drone hoặc camera giám sát.
 
-#### C++ Application (Production-Ready)
+#### Backend C++ (sẵn sàng triển khai)
 
-For real-time video stream processing with better performance, use the C++ application:
+Backend C++ dùng ONNX Runtime, lắng nghe HTTP cổng 8080, nhận ảnh 224×224 (raw hoặc base64), trả JSON. Xem chi tiết trong [`app/README.md`](app/README.md).
 
 ```bash
-# Step 1: Export model to TorchScript format
-python export_torchscript.py
+# Bước 1: Tạo file ONNX
+python quantize_int8.py
 
-# Step 2: Build C++ application
-cd app
-./build.sh
+# Bước 2: Build backend C++
+cd app && mkdir build && cd build
+cmake -DONNXRUNTIME_ROOT=/path/to/onnxruntime ..
+make
 
-# Step 3: Run fire detection on video stream
-cd build
-./fire_detector \
-  --video "../../Forest Fire with Drone Support.mp4" \
-  --model ../../fire_detection_scripted.pt \
-  --threshold 0.8 \
-  --save
+# Bước 3: Chạy (hoặc dùng Docker)
+./fire_backend /path/to/app/model/fire_detection.onnx
 ```
 
-**Features**:
-- 🎥 Real-time video processing with visual overlays
-- ⚡ GPU acceleration support (CUDA)
-- 💾 Save processed output video
-- 📊 Live performance statistics
-- 🎮 Interactive controls (pause/resume)
-- 🔥 Fire alerts with confidence scores
+**Tính năng**: HTTP API /predict, tiền xử lý ImageNet, suy luận ONNX, trả JSON (class, confidence). Có thể đóng gói bằng Docker (xem `app/Dockerfile`).
 
-See [`app/README.md`](app/README.md) for detailed documentation or [`app/QUICKSTART.md`](app/QUICKSTART.md) for a quick start guide.
-
-### 9. ESP32 Setup
-
-See detailed instructions in [`edge/README.md`](edge/README.md).
-
-```bash
-# Install ESP-IDF
-git clone --recursive https://github.com/espressif/esp-idf.git
-cd esp-idf
-./install.sh
-
-# Set up environment
-. ./export.sh
-
-# Build and flash
-cd edge
-idf.py build
-idf.py -p /dev/ttyUSB0 flash monitor
-```
-
-### 10. Ground Station Setup
+### 9. Thiết lập trạm mặt đất
 
 ```bash
 cd ground_station
 
-# Configure MQTT broker and cloud API
+# Cấu hình broker MQTT và API cloud
 cp config.yaml.example config.yaml
-nano config.yaml  # Edit configuration
+nano config.yaml  # Chỉnh cấu hình
 
-# Run ground station
+# Chạy trạm mặt đất
 python receiver.py
 ```
 
-### 11. Cloud Platform Setup
+### 10. Thiết lập nền tảng đám mây
 
 ```bash
 cd cloud/api
 
-# Set up database
+# Khởi tạo cơ sở dữ liệu
 python init_db.py
 
-# Run API server
+# Chạy API server
 uvicorn app:app --host 0.0.0.0 --port 8000
 
-# In another terminal, run dashboard
+# Terminal khác: chạy dashboard
 cd ../dashboard
 npm install
 npm run dev
 ```
 
-## Usage
+## Cách sử dụng
 
-### Basic Operation Flow
+### Luồng hoạt động cơ bản
 
-1. **Edge Device**: ESP32-CAM captures frames every 5 seconds
-2. **Inference**: EfficientNet-Lite0 processes frame (~30ms)
-3. **Detection**: If confidence > 0.8, generate alert
-4. **Alert**: Send alert to ground station via MQTT/HTTP
-5. **Ground Station**: Receive, store, and display on map
-6. **Cloud**: Relay to cloud for visualization and notifications
-7. **Notification**: Push alert to manager's mobile device
+1. **Camera/Client**: Gửi ảnh 224×224 RGB tới backend (HTTP POST /predict).
+2. **Suy luận**: Backend chạy EfficientNet-Lite0 (ONNX) (~20–40 ms).
+3. **Phát hiện**: Nếu độ tin cậy > 0,8 thì tạo cảnh báo.
+4. **Cảnh báo**: Gửi cảnh báo tới trạm mặt đất qua MQTT/HTTP.
+5. **Trạm mặt đất**: Nhận, lưu trữ và hiển thị trên bản đồ.
+6. **Đám mây**: Chuyển tiếp lên cloud để trực quan hóa và thông báo.
+7. **Thông báo**: Đẩy cảnh báo tới thiết bị di động của người quản lý.
 
-### Configuration
+### Cấu hình
 
-Edit `edge/main/config.h` for ESP32 settings:
-
-```c
-#define CAMERA_CAPTURE_INTERVAL_SEC 5
-#define CONFIDENCE_THRESHOLD 0.80
-#define MQTT_BROKER "192.168.1.100"
-#define MQTT_TOPIC "wildfire/alerts"
-```
-
-Edit `ground_station/config.yaml` for ground station:
+Chỉnh `ground_station/config.yaml` cho trạm mặt đất:
 
 ```yaml
 mqtt:
@@ -570,218 +537,202 @@ map:
   zoom: 12
 ```
 
-## Performance Evaluation
+## Đánh giá hiệu năng
 
-### Model Accuracy
+### Độ chính xác mô hình
 
-Evaluated on test set of 1,000+ images:
+Đánh giá trên tập test hơn 1.000 ảnh:
 
-| Metric | Score |
-|--------|-------|
-| **Precision** | 94.2% |
-| **Recall** | 91.8% |
-| **F1-Score** | 93.0% |
-| **Accuracy** | 93.5% |
+| Chỉ số | Giá trị |
+|--------|---------|
+| **Precision** | 94,2% |
+| **Recall** | 91,8% |
+| **F1-Score** | 93,0% |
+| **Accuracy** | 93,5% |
 
-### Scenario Testing
+Độ chính xác validation (từ checkpoint baseline): **98,5%**.
 
-| Scenario | Accuracy | Notes |
-|----------|----------|-------|
-| Daylight | 95.3% | Best performance |
-| Low-light | 88.7% | Requires IR camera for night |
-| Fog/Mist | 87.2% | Smoke harder to distinguish |
-| Smoke-only | 89.5% | Early detection capability |
+### Kiểm thử theo kịch bản
 
-### False Positive Analysis
+| Kịch bản | Độ chính xác | Ghi chú |
+|----------|--------------|---------|
+| Ban ngày | 95,3% | Tốt nhất |
+| Thiếu sáng | 88,7% | Cần camera hồng ngoại cho ban đêm |
+| Sương mù | 87,2% | Khói khó phân biệt hơn |
+| Chỉ khói | 89,5% | Khả năng phát hiện sớm |
 
-Common false positive sources and mitigation:
-- **Sunset/Sunrise**: Temporal context (time of day)
-- **Chimneys**: Geographic filtering (exclude residential)
-- **Dust clouds**: Motion analysis (dust settles quickly)
-- **Vehicle headlights**: Shape analysis (circular vs irregular)
+### Phân tích dương tính giả
 
-False positive rate: **3.8%** (acceptable for alerting system)
+Nguồn dương tính giả thường gặp và cách giảm thiểu:
+- **Hoàng hôn/Bình minh**: Ngữ cảnh thời gian (giờ trong ngày).
+- **Ống khói**: Lọc theo vị trí (loại trừ khu dân cư).
+- **Bụi**: Phân tích chuyển động (bụi lắng nhanh).
+- **Đèn xe**: Phân tích hình dạng (tròn so với bất thường).
 
-### Latency Breakdown
+Tỷ lệ dương tính giả: **3,8%** (chấp nhận được cho hệ thống cảnh báo).
 
-| Stage | Time |
-|-------|------|
-| Frame capture | 100-200 ms |
-| Preprocessing | 10-20 ms |
-| Inference | 20-40 ms |
-| Post-processing | 5-10 ms |
-| MQTT publish | 50-100 ms |
-| **Total** | **~200-400 ms** |
+### Phân tích độ trễ
 
-End-to-end (capture → alert on ground station): **2-5 seconds**
+| Giai đoạn | Thời gian |
+|-----------|-----------|
+| Chụp khung hình | 100–200 ms |
+| Tiền xử lý | 10–20 ms |
+| Suy luận | 20–40 ms |
+| Hậu xử lý | 5–10 ms |
+| Gửi MQTT | 50–100 ms |
+| **Tổng** | **~200–400 ms** |
 
-### Bandwidth Comparison
+Toàn bộ đường đi (chụp → cảnh báo tới trạm mặt đất): **2–5 giây**.
 
-**Edge AI (This System)**:
-- Alert size: ~1 KB (JSON + small thumbnail)
-- Frequency: Only when fire detected (rare events)
-- Daily bandwidth: <1 MB (assuming 10 alerts/day)
+### So sánh băng thông
 
-**Traditional Cloud Streaming**:
-- Video bitrate: 5-10 Mbps (720p H.264)
-- Continuous streaming: 24/7
-- Daily bandwidth: 54-108 GB
+**Edge AI (hệ thống này)**:
+- Kích thước cảnh báo: ~1 KB (JSON + thumbnail nhỏ).
+- Tần suất: Chỉ khi phát hiện cháy (sự kiện hiếm).
+- Băng thông hàng ngày: &lt;1 MB (giả sử 10 cảnh báo/ngày).
 
-**Savings**: 99.998% bandwidth reduction
+**Streaming đám mây truyền thống**:
+- Bitrate video: 5–10 Mbps (720p H.264).
+- Streaming liên tục 24/7.
+- Băng thông hàng ngày: 54–108 GB.
 
-### Power Consumption
+**Tiết kiệm**: Giảm ~99,998% băng thông.
 
-| Mode | Current | Duration |
-|------|---------|----------|
-| Active (capture + inference) | 300-400 mA | 0.5 sec |
-| WiFi transmit | 150-200 mA | 0.2 sec |
-| Deep sleep | 10-20 µA | 4.3 sec |
-| **Average** | **~35 mA** | **per 5 sec cycle** |
+### Tiêu thụ điện (thiết bị biên)
 
-Battery life: ~30 days on 3,000 mAh battery with solar charging
+| Chế độ | Dòng điện | Thời lượng |
+|--------|-----------|------------|
+| Hoạt động (chụp + suy luận) | 300–400 mA | 0,5 s |
+| Truyền WiFi | 150–200 mA | 0,2 s |
+| Ngủ sâu | 10–20 µA | 4,3 s |
+| **Trung bình** | **~35 mA** | **mỗi chu kỳ 5 s** |
 
-## Demo Scenario
+Thời lượng pin: ~30 ngày với pin 3.000 mAh kèm sạc năng lượng mặt trời.
 
-A complete demonstration scenario showcasing the system's capabilities:
+## Kịch bản demo
 
-### Setup
-- ESP32-CAM deployed in forest monitoring area
-- Ground station (Raspberry Pi) in ranger station
-- Cloud dashboard accessible via web browser
-- Mobile app for push notifications
+Kịch bản minh họa đầy đủ khả năng hệ thống:
 
-### Scenario: Fire Detection
-1. **T+0s**: Fire starts in monitored area
-2. **T+5s**: ESP32-CAM captures frame during regular scan
-3. **T+5.03s**: EfficientNet-Lite0 inference detects fire (confidence: 0.92)
-4. **T+5.15s**: Alert published to MQTT broker
-5. **T+5.25s**: Ground station receives alert
-6. **T+5.30s**: Alert displayed on map with:
-   - GPS coordinates: 10.8231°N, 106.6297°E
-   - Captured image showing fire
-   - Confidence score: 92%
-   - Timestamp: 2025-01-05 14:23:45
-7. **T+5.50s**: Push notification sent to ranger's phone
-8. **T+6.00s**: Alert relayed to cloud dashboard
-9. **T+10s**: Ranger views alert and dispatches team
+### Thiết lập
+- Camera/Client triển khai tại khu vực giám sát rừng.
+- Backend inference (C++/ONNX hoặc container) nhận ảnh qua HTTP.
+- Trạm mặt đất (Raspberry Pi) tại trạm kiểm lâm.
+- Dashboard đám mây truy cập qua trình duyệt; ứng dụng di động nhận thông báo đẩy.
 
-**Total response time**: 5 seconds from fire to notification
+### Kịch bản: Phát hiện cháy
+1. **T+0s**: Cháy bắt đầu trong khu vực giám sát.
+2. **T+5s**: Camera chụp khung hình, gửi tới backend.
+3. **T+5,03s**: Suy luận EfficientNet-Lite0 phát hiện cháy (độ tin cậy: 0,92).
+4. **T+5,15s**: Cảnh báo được publish lên broker MQTT.
+5. **T+5,25s**: Trạm mặt đất nhận cảnh báo.
+6. **T+5,30s**: Cảnh báo hiển thị trên bản đồ (tọa độ GPS, ảnh, độ tin cậy 92%, timestamp).
+7. **T+5,50s**: Thông báo đẩy gửi tới điện thoại kiểm lâm.
+8. **T+6s**: Cảnh báo chuyển tiếp lên dashboard đám mây.
+9. **T+10s**: Kiểm lâm xem cảnh báo và điều đội ứng phó.
 
-### Dashboard Features
-- Real-time map with fire location markers
-- Alert history timeline
-- Statistics: total alerts, false positives, response times
-- Device status monitoring (battery, connectivity)
-- Historical trends and analytics
+**Tổng thời gian phản hồi**: 5 giây từ lúc cháy đến thông báo.
 
-## Technical Stack
+### Tính năng dashboard
+- Bản đồ thời gian thực với điểm đánh dấu vị trí cháy.
+- Lịch sử cảnh báo.
+- Thống kê: tổng cảnh báo, dương tính giả, thời gian phản hồi.
+- Giám sát trạng thái thiết bị (pin, kết nối).
+- Xu hướng và phân tích lịch sử.
 
-### Model Training Approach
+## Công nghệ sử dụng
 
-**Important**: This project uses **standard transfer learning** (fine-tuning), NOT knowledge distillation.
+### Cách huấn luyện mô hình
 
-**Training Method**:
-- **Approach**: Transfer learning with full fine-tuning
-- **Pre-trained Model**: EfficientNet-Lite0 from ImageNet
-- **Strategy**: All layers trainable from the start
-- **Loss**: Standard Cross-Entropy Loss (no distillation loss)
-- **Why not distillation?**: 
-  - EfficientNet-Lite0 is already optimized for edge devices
-  - Direct fine-tuning on fire detection data is more effective for this specialized task
-  - Model size (~5 MB INT8) already fits ESP32-S3 constraints
-  - Distillation is typically used to compress larger models (ResNet50 → MobileNet), but we start with an efficient architecture
+**Lưu ý**: Dự án dùng **transfer learning chuẩn** (fine-tuning, huấn luyện cơ sở), không dùng knowledge distillation cho mô hình triển khai.
 
-**If you wanted to use distillation**, you would:
-1. Train a larger teacher model (e.g., EfficientNet-B3 or ResNet50)
-2. Use the teacher's soft predictions to train the student (EfficientNet-Lite0)
-3. Combine distillation loss with hard label loss
-4. However, for this project, direct training achieves excellent results
+**Phương pháp huấn luyện**:
+- **Cách tiếp cận**: Transfer learning với fine-tune toàn bộ.
+- **Mô hình pretrained**: EfficientNet-Lite0 từ ImageNet.
+- **Chiến lược**: Mọi lớp đều trainable ngay từ đầu.
+- **Loss**: Cross-Entropy chuẩn (không dùng distillation loss).
+- **Tại sao không dùng distillation cho triển khai?**: Đồ án đã so sánh hai phương pháp; baseline đạt cùng 98,5% accuracy với validation loss thấp hơn (0,156 vs 0,463), quy trình đơn giản hơn — xem mục «Tổng hợp nội dung đồ án» và `report.tex`.
 
-### Training & Model Development
+### Huấn luyện và phát triển mô hình
 - **Framework**: PyTorch 2.0+
-- **Model Library**: timm (EfficientNet-Lite pretrained)
-- **Export**: ONNX, TensorFlow Lite
-- **Quantization**: Post-training INT8 quantization
-- **Dataset**: PyTorch Dataset & DataLoader
+- **Thư viện mô hình**: timm (EfficientNet-Lite pretrained)
+- **Export**: ONNX, TorchScript
+- **Lượng tử**: Lượng tử INT8 sau huấn luyện (script `quantize_int8.py`)
+- **Dữ liệu**: PyTorch Dataset & DataLoader
 
-### Edge Device (ESP32)
-- **Platform**: ESP-IDF (Espressif IoT Development Framework)
-- **Inference Engine**: TensorFlow Lite Micro
-- **Camera**: ESP32-CAM driver (OV2640)
-- **Connectivity**: WiFi (ESP-IDF WiFi stack) or LoRa
-- **Protocol**: MQTT (PubSub) or HTTP REST
+### Backend / thiết bị biên
+- **Backend inference**: C++, ONNX Runtime
+- **API**: HTTP POST /predict (ảnh raw hoặc base64), trả JSON
+- **Container**: Docker multi-stage (xem `app/Dockerfile`)
 
-### Ground Station
-- **Language**: Python 3.9+
-- **MQTT Client**: paho-mqtt
-- **Web Framework**: Flask or FastAPI
-- **Database**: SQLite (development) / PostgreSQL (production)
-- **Map Visualization**: Folium (Python) or Leaflet.js
-- **GUI**: Streamlit or custom web interface
+### Trạm mặt đất
+- **Ngôn ngữ**: Python 3.9+
+- **MQTT**: paho-mqtt
+- **Web**: Flask hoặc FastAPI
+- **Cơ sở dữ liệu**: SQLite (phát triển) / PostgreSQL (production)
+- **Bản đồ**: Folium (Python) hoặc Leaflet.js
 
-### Cloud Platform
-- **Backend**: Python (FastAPI) or Node.js (Express)
-- **Database**: PostgreSQL (alerts, history) or MongoDB
-- **API**: REST API with JWT authentication
-- **Frontend**: React.js or Vue.js
-- **Maps**: Leaflet.js or Google Maps API
-- **Notifications**: Firebase Cloud Messaging (FCM) or Twilio
-- **Deployment**: Docker + Kubernetes or simple VPS
+### Nền tảng đám mây
+- **Backend**: Python (FastAPI) hoặc Node.js (Express)
+- **Cơ sở dữ liệu**: PostgreSQL hoặc MongoDB
+- **API**: REST API với xác thực JWT
+- **Frontend**: React.js hoặc Vue.js
+- **Bản đồ**: Leaflet.js hoặc Google Maps API
+- **Thông báo**: Firebase Cloud Messaging (FCM) hoặc Twilio
+- **Triển khai**: Docker + Kubernetes hoặc VPS đơn giản
 
-## Roadmap
+## Lộ trình
 
-### Phase 1: Core System (Current)
-- [x] Model selection and architecture design
-- [x] EfficientNet-Lite training pipeline
-- [ ] INT8 quantization and optimization
-- [ ] ESP32 inference implementation
-- [ ] Basic MQTT alerting
+### Giai đoạn 1: Hệ thống lõi (hiện tại)
+- [x] Chọn mô hình và thiết kế kiến trúc
+- [x] Pipeline huấn luyện EfficientNet-Lite
+- [x] Script lượng tử INT8 và export ONNX
+- [x] Backend C++ với ONNX Runtime và Docker
+- [ ] Triển khai MQTT cảnh báo (tùy chọn)
 
-### Phase 2: Ground Station
-- [ ] Alert receiver with local storage
-- [ ] Real-time map visualization
-- [ ] Cloud relay service
-- [ ] Offline operation support
+### Giai đoạn 2: Trạm mặt đất
+- [ ] Bộ nhận cảnh báo với lưu trữ cục bộ
+- [ ] Trực quan hóa bản đồ thời gian thực
+- [ ] Dịch vụ chuyển tiếp lên cloud
+- [ ] Hỗ trợ hoạt động offline
 
-### Phase 3: Cloud Platform
+### Giai đoạn 3: Nền tảng đám mây
 - [ ] REST API server
 - [ ] Web dashboard
-- [ ] Push notification service
-- [ ] Historical data analytics
+- [ ] Dịch vụ thông báo đẩy
+- [ ] Phân tích dữ liệu lịch sử
 
-### Phase 4: Advanced Features
-- [ ] Multi-device coordination
-- [ ] Fire spread prediction
-- [ ] Integration with drone footage
-- [ ] LoRa long-range communication
-- [ ] Solar power optimization
+### Giai đoạn 4: Tính năng nâng cao
+- [ ] Điều phối đa thiết bị
+- [ ] Dự đoán lan truyền cháy
+- [ ] Tích hợp footage drone
+- [ ] Truyền thông tầm xa (LoRa)
+- [ ] Tối ưu năng lượng mặt trời
 
-### Phase 5: Deployment & Testing
-- [ ] Field testing in actual forest environment
-- [ ] Performance benchmarking
-- [ ] False positive reduction tuning
-- [ ] Documentation and user guides
+### Giai đoạn 5: Triển khai và kiểm thử
+- [ ] Kiểm thử thực địa trong môi trường rừng
+- [ ] Đo đạc hiệu năng
+- [ ] Tinh chỉnh giảm dương tính giả
+- [ ] Tài liệu và hướng dẫn người dùng
 
-## Contributing
+## Đóng góp
 
-Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+Mọi đóng góp đều được chào đón. Xem [CONTRIBUTING.md](CONTRIBUTING.md) để biết hướng dẫn.
 
-## License
+## Giấy phép
 
-MIT License - see [LICENSE](LICENSE) for details.
+MIT License — xem [LICENSE](LICENSE).
 
-## Acknowledgments
+## Ghi nhận
 
-- EfficientNet paper: [EfficientNet: Rethinking Model Scaling for Convolutional Neural Networks](https://arxiv.org/abs/1905.11946)
+- Bài báo EfficientNet: [EfficientNet: Rethinking Model Scaling for Convolutional Neural Networks](https://arxiv.org/abs/1905.11946)
 - FIRE Dataset: University of Salerno Fire Detection Dataset
 - FLAME Dataset: Aerial Wildfire Image Dataset
-- ESP-IDF: Espressif IoT Development Framework
-- TensorFlow Lite Micro: On-device ML inference framework
+- ONNX Runtime: Suy luận mô hình cho backend C++
 
-## Contact
+## Liên hệ
 
-For questions, issues, or collaboration opportunities, please open an issue on GitHub or contact the maintainers.
+Với câu hỏi, báo lỗi hoặc cơ hội hợp tác, vui lòng mở issue trên GitHub hoặc liên hệ người bảo trì.
 
 ---
 
-**Note**: This is a research and development project for automated wildfire detection using Edge AI. The system demonstrates the feasibility of real-time fire detection on resource-constrained devices, providing ultra-low latency and minimal bandwidth requirements compared to traditional cloud-based approaches.
+**Ghi chú**: Đây là dự án nghiên cứu và phát triển cho phát hiện cháy rừng tự động bằng Edge AI. Hệ thống chứng minh tính khả thi của phát hiện cháy thời gian thực trên backend/thiết bị biên, với độ trễ thấp và yêu cầu băng thông tối thiểu so với cách tiếp cận dựa trên đám mây truyền thống.
