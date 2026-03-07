@@ -1,60 +1,51 @@
-# Fire detection backend (C++ / ONNX Runtime)
+# Fire Detection — C++ ONNX Runtime
 
-Minimal HTTP service that runs EfficientNet-Lite0 (ONNX) for fire/normal classification. Accepts a single image per request and returns JSON.
+Minimal CLI that loads an EfficientNet-Lite0 ONNX model and classifies a single image as `fire` or `normal`.
 
 ## Prerequisites
 
-1. **Export the ONNX model** (from repo root):
+1. **ONNX model** — export from the trained checkpoint:
    ```bash
    python quantize_int8.py
    ```
-   This produces `app/model/fire_detection.onnx` (and checks INT8 accuracy if validation data exists).
+   Produces `fire_detection.onnx`.
 
-2. **ONNX Runtime** (for local build): set `ONNXRUNTIME_ROOT` to the unpacked Linux x64 package, or install system-wide.
+2. **ONNX Runtime** — download the C++ package:
+   ```bash
+   wget https://github.com/microsoft/onnxruntime/releases/download/v1.16.3/onnxruntime-linux-x64-1.16.3.tgz
+   tar xzf onnxruntime-linux-x64-1.16.3.tgz
+   export ONNXRUNTIME_ROOT=$(pwd)/onnxruntime-linux-x64-1.16.3
+   ```
 
-## Build (local)
+## Build
 
 ```bash
 cd app
-mkdir build && cd build
-cmake -DCMAKE_BUILD_TYPE=Release -DONNXRUNTIME_ROOT=/path/to/onnxruntime-linux-x64-* ..
+mkdir -p build && cd build
+cmake -DCMAKE_BUILD_TYPE=Release ..
 make
 ```
 
-Binary: `fire_backend`.
-
-## Run (local)
+## Run
 
 ```bash
-./fire_backend /path/to/fire_detection.onnx
+# Convert any image to raw 224x224 RGB
+python app/prepare_input.py photo.jpg test_input.rgb
+
+# Inference
+./build/fire_backend fire_detection.onnx test_input.rgb
 ```
 
-Listens on `0.0.0.0:8080`. Send POST to `/predict` with body either:
-- **Raw**: 150528 bytes (RGB 224×224), or  
-- **Base64**: same image encoded as base64.
-
-Response: `{"class":"fire"|"normal","confidence":<float>}`.
-
-## Docker
-
-Build (from repo root; ensure `app/model/fire_detection.onnx` exists or mount it at run time):
-
-```bash
-docker build -f app/Dockerfile -t fire-backend ./app
+Output:
+```
+class:      fire
+confidence: 0.973
 ```
 
-Run with model mounted:
+## Files
 
-```bash
-docker run -p 8080:8080 -v "$(pwd)/app/model:/app/model" fire-backend
-```
-
-Or copy the model into the image by adding to the Dockerfile before `EXPOSE`:  
-`COPY model/ /app/model/` (when building with context `app/` and `app/model/` present).
-
-## Layout
-
-- `CMakeLists.txt` — build with ONNX Runtime
-- `include/preprocess.h` — ImageNet normalization, `preprocess_rgb224()`
-- `src/main.cpp` — HTTP server, ONNX inference, JSON response
-- `Dockerfile` — multi-stage build for a small runtime image
+- `src/main.cpp` — load model, read raw image, inference, print result
+- `include/preprocess.h` — ImageNet normalization (HWC uint8 → CHW float32)
+- `prepare_input.py` — convert JPEG/PNG to raw 224×224 RGB
+- `CMakeLists.txt` — CMake build with ONNX Runtime
+- `Dockerfile` — multi-stage build for container deployment

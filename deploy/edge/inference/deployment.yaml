@@ -66,13 +66,13 @@ spec:
               cpu: 250m
           readinessProbe:
             httpGet:
-              path: /
+              path: /metrics
               port: 9090
             initialDelaySeconds: 5
             periodSeconds: 10
           livenessProbe:
             httpGet:
-              path: /
+              path: /metrics
               port: 9090
             initialDelaySeconds: 10
             periodSeconds: 30
