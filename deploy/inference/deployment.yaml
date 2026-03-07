@@ -1,0 +1,94 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: inference
+  namespace: fire-detection
+  labels:
+    app: inference
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: inference
+  template:
+    metadata:
+      labels:
+        app: inference
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9090"
+    spec:
+      nodeSelector:
+        node-role: edge
+
+      # Init container: download latest model from model-server
+      initContainers:
+        - name: model-init
+          image: busybox:1.36
+          command: ["sh", "-c"]
+          args:
+            - |
+              echo "Downloading model from model-server..."
+              wget -O /model/fire_detection.onnx \
+                http://model-server.fire-detection.svc:8000/model
+              echo "Model downloaded."
+          volumeMounts:
+            - name: model-vol
+              mountPath: /model
+
+      containers:
+        # Sidecar: MQTT bridge + Prometheus metrics
+        - name: mqtt-bridge
+          image: fire-mqtt-bridge:latest
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: MQTT_HOST
+              value: mqtt-broker.fire-detection.svc
+            - name: BACKEND_URL
+              value: http://localhost:8080/predict
+            - name: METRICS_PORT
+              value: "9090"
+          ports:
+            - containerPort: 9090
+              name: metrics
+          resources:
+            limits:
+              memory: 256Mi
+              cpu: 300m
+            requests:
+              memory: 128Mi
+              cpu: 100m
+
+        # Main container: C++ ONNX inference backend
+        - name: fire-backend
+          image: fire-backend:latest
+          imagePullPolicy: IfNotPresent
+          args: ["/model/fire_detection.onnx"]
+          ports:
+            - containerPort: 8080
+              name: http
+          volumeMounts:
+            - name: model-vol
+              mountPath: /model
+              readOnly: true
+          resources:
+            limits:
+              memory: 512Mi
+              cpu: "1"
+            requests:
+              memory: 256Mi
+              cpu: 250m
+          readinessProbe:
+            tcpSocket:
+              port: 8080
+            initialDelaySeconds: 3
+            periodSeconds: 10
+          livenessProbe:
+            tcpSocket:
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 30
+
+      volumes:
+        - name: model-vol
+          emptyDir: {}

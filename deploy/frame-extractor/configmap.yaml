@@ -1,0 +1,26 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: frame-sources
+  namespace: fire-detection
+data:
+  # Each entry: a video file mapped to a GPS location on the map.
+  # In production these would be real camera feeds; here we simulate
+  # with local video files mounted into /videos.
+  sources.json: |
+    [
+      {
+        "id": "cam-binhphuoc-01",
+        "file": "Forest Fire with Drone Support.mp4",
+        "lat": 11.75,
+        "lon": 106.90,
+        "description": "Binh Phuoc forest area"
+      },
+      {
+        "id": "cam-dalat-01",
+        "file": "Heilbronn Germany _ Foggy Forest _ Cinematic Drone Video.mp4",
+        "lat": 11.94,
+        "lon": 108.44,
+        "description": "Da Lat pine forest"
+      }
+    ]

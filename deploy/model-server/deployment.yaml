@@ -1,0 +1,57 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: model-server
+  namespace: fire-detection
+  labels:
+    app: model-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: model-server
+  template:
+    metadata:
+      labels:
+        app: model-server
+    spec:
+      nodeSelector:
+        node-role: cloud
+      containers:
+        - name: server
+          image: fire-model-server:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8000
+          env:
+            - name: MODEL_DIR
+              value: /models
+          volumeMounts:
+            - name: models
+              mountPath: /models
+          resources:
+            limits:
+              memory: 256Mi
+              cpu: 200m
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            periodSeconds: 30
+      volumes:
+        - name: models
+          hostPath:
+            path: /opt/fire-detection/models
+            type: DirectoryOrCreate
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: model-server
+  namespace: fire-detection
+spec:
+  selector:
+    app: model-server
+  ports:
+    - port: 8000
+      targetPort: 8000

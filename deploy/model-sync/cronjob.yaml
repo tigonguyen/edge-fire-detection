@@ -1,0 +1,68 @@
+# Checks model version every 5 min; if changed, triggers rolling restart
+# of the inference deployment so init containers pull the new model.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: model-sync
+  namespace: fire-detection
+spec:
+  schedule: "*/5 * * * *"
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 1
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          nodeSelector:
+            node-role: cloud
+          serviceAccountName: model-sync
+          restartPolicy: OnFailure
+          containers:
+            - name: sync
+              image: bitnami/kubectl:latest
+              command: ["/bin/sh", "-c"]
+              args:
+                - |
+                  CURRENT=$(wget -qO- http://model-server.fire-detection.svc:8000/version)
+                  STORED=$(kubectl get cm model-version -n fire-detection -o jsonpath='{.data.version}' 2>/dev/null || echo "none")
+                  if [ "$CURRENT" != "$STORED" ]; then
+                    echo "New model detected ($STORED -> $CURRENT). Rolling restart..."
+                    kubectl create cm model-version -n fire-detection \
+                      --from-literal=version="$CURRENT" \
+                      --dry-run=client -o yaml | kubectl apply -f -
+                    kubectl rollout restart deployment/inference -n fire-detection
+                  else
+                    echo "Model unchanged ($CURRENT)."
+                  fi
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: model-sync
+  namespace: fire-detection
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: model-sync
+  namespace: fire-detection
+rules:
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get", "create", "patch", "update"]
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    verbs: ["get", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: model-sync
+  namespace: fire-detection
+subjects:
+  - kind: ServiceAccount
+    name: model-sync
+roleRef:
+  kind: Role
+  name: model-sync
+  apiGroup: rbac.authorization.k8s.io

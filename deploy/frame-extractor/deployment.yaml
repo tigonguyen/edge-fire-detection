@@ -1,0 +1,50 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frame-extractor
+  namespace: fire-detection
+  labels:
+    app: frame-extractor
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: frame-extractor
+  template:
+    metadata:
+      labels:
+        app: frame-extractor
+    spec:
+      nodeSelector:
+        node-role: edge
+      containers:
+        - name: extractor
+          image: fire-frame-extractor:latest
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: MQTT_HOST
+              value: mqtt-broker.fire-detection.svc
+            - name: FRAME_INTERVAL
+              value: "2"
+            - name: SOURCES_JSON
+              value: /config/sources.json
+            - name: VIDEO_DIR
+              value: /videos
+          volumeMounts:
+            - name: config
+              mountPath: /config
+            - name: videos
+              mountPath: /videos
+              readOnly: true
+          resources:
+            limits:
+              memory: 512Mi
+              cpu: 500m
+      volumes:
+        - name: config
+          configMap:
+            name: frame-sources
+        - name: videos
+          hostPath:
+            path: /opt/fire-detection/videos
+            type: DirectoryOrCreate
