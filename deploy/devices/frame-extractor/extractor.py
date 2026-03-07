@@ -1,20 +1,19 @@
 """
-Simulates camera feeds by extracting frames from video files and
-publishing them to MQTT with location metadata.
+Simulates camera feeds from multiple locations by extracting frames
+from video files and publishing them to MQTT on the edge layer.
 
 Each video is mapped to a GPS location (simulating a camera on a map).
 Frames are resized to 224x224 RGB and published as raw bytes.
 
-MQTT topic format: frames/<location_id>
-MQTT payload: raw 224x224x3 bytes (150528 B)
-MQTT user-property headers (v5) or retained JSON on frames/<location_id>/meta
+MQTT topic:  frames/<location_id>         → raw 224×224×3 bytes
+MQTT topic:  frames/<location_id>/meta     → JSON {id, lat, lon} (retained)
 """
 
 import json
 import os
 import time
+import threading
 import cv2
-import numpy as np
 import paho.mqtt.client as mqtt
 
 MQTT_HOST = os.environ.get("MQTT_HOST", "mqtt-broker.fire-detection.svc")
@@ -31,13 +30,13 @@ def load_sources(path):
         return json.load(f)
 
 
-def extract_and_publish(client, source):
+def stream_source(client, source):
     loc_id = source["id"]
     lat = source["lat"]
     lon = source["lon"]
     video_path = os.path.join(VIDEO_DIR, source["file"])
 
-    meta = json.dumps({"id": loc_id, "lat": lat, "lon": lon, "file": source["file"]})
+    meta = json.dumps({"id": loc_id, "lat": lat, "lon": lon})
     client.publish(f"frames/{loc_id}/meta", meta, retain=True)
 
     cap = cv2.VideoCapture(video_path)
@@ -45,20 +44,16 @@ def extract_and_publish(client, source):
         print(f"[{loc_id}] Cannot open {video_path}")
         return
 
-    print(f"[{loc_id}] Streaming from {video_path} (lat={lat}, lon={lon})")
+    print(f"[{loc_id}] Streaming (lat={lat}, lon={lon})")
     while cap.isOpened():
         ret, frame = cap.read()
         if not ret:
             cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
             continue
-
         rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         rgb = cv2.resize(rgb, (IMG_SIZE, IMG_SIZE))
-
-        payload = rgb.tobytes()
-        client.publish(f"frames/{loc_id}", payload)
+        client.publish(f"frames/{loc_id}", rgb.tobytes())
         time.sleep(FRAME_INTERVAL)
-
     cap.release()
 
 
@@ -68,16 +63,13 @@ def main():
     client.connect(MQTT_HOST, MQTT_PORT, keepalive=60)
     client.loop_start()
 
-    print(f"Connected to MQTT {MQTT_HOST}:{MQTT_PORT}")
-    print(f"Sources: {len(sources)}, interval: {FRAME_INTERVAL}s")
+    print(f"MQTT: {MQTT_HOST}:{MQTT_PORT} | sources: {len(sources)} | interval: {FRAME_INTERVAL}s")
 
-    import threading
     threads = []
     for src in sources:
-        t = threading.Thread(target=extract_and_publish, args=(client, src), daemon=True)
+        t = threading.Thread(target=stream_source, args=(client, src), daemon=True)
         t.start()
         threads.append(t)
-
     for t in threads:
         t.join()
 

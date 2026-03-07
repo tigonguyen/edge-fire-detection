@@ -1,9 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Install Prometheus + Grafana on k3s via Helm.
-# Requires: helm (https://helm.sh/docs/intro/install/)
-
 echo "Adding Helm repos..."
 helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
 helm repo add grafana https://grafana.github.io/helm-charts
@@ -35,4 +32,4 @@ helm upgrade --install grafana grafana/grafana \
 
 echo ""
 echo "Grafana: http://<MASTER_IP>:30300  (admin / fire-admin)"
-echo "Import dashboard from deploy/monitoring/grafana-dashboard.json"
+echo "Import dashboard from deploy/cloud/monitoring/grafana-dashboard.json"

@@ -5,6 +5,7 @@ metadata:
   namespace: fire-detection
   labels:
     app: frame-extractor
+    tier: devices
 spec:
   replicas: 1
   selector:
@@ -14,9 +15,10 @@ spec:
     metadata:
       labels:
         app: frame-extractor
+        tier: devices
     spec:
       nodeSelector:
-        node-role: edge
+        node-role: device
       containers:
         - name: extractor
           image: fire-frame-extractor:latest

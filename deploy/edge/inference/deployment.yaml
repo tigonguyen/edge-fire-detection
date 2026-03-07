@@ -5,6 +5,7 @@ metadata:
   namespace: fire-detection
   labels:
     app: inference
+    tier: edge
 spec:
   replicas: 1
   selector:
@@ -14,6 +15,7 @@ spec:
     metadata:
       labels:
         app: inference
+        tier: edge
       annotations:
         prometheus.io/scrape: "true"
         prometheus.io/port: "9090"
@@ -21,7 +23,6 @@ spec:
       nodeSelector:
         node-role: edge
 
-      # Init container: download latest model from model-server
       initContainers:
         - name: model-init
           image: busybox:1.36
@@ -31,42 +32,27 @@ spec:
               echo "Downloading model from model-server..."
               wget -O /model/fire_detection.onnx \
                 http://model-server.fire-detection.svc:8000/model
-              echo "Model downloaded."
+              echo "Model ready."
           volumeMounts:
             - name: model-vol
               mountPath: /model
 
       containers:
-        # Sidecar: MQTT bridge + Prometheus metrics
-        - name: mqtt-bridge
-          image: fire-mqtt-bridge:latest
+        - name: inference
+          image: fire-inference:latest
           imagePullPolicy: IfNotPresent
           env:
             - name: MQTT_HOST
               value: mqtt-broker.fire-detection.svc
-            - name: BACKEND_URL
-              value: http://localhost:8080/predict
+            - name: MODEL_PATH
+              value: /model/fire_detection.onnx
             - name: METRICS_PORT
               value: "9090"
+            - name: CLASS_NAMES
+              value: "fire,normal"
           ports:
             - containerPort: 9090
               name: metrics
-          resources:
-            limits:
-              memory: 256Mi
-              cpu: 300m
-            requests:
-              memory: 128Mi
-              cpu: 100m
-
-        # Main container: C++ ONNX inference backend
-        - name: fire-backend
-          image: fire-backend:latest
-          imagePullPolicy: IfNotPresent
-          args: ["/model/fire_detection.onnx"]
-          ports:
-            - containerPort: 8080
-              name: http
           volumeMounts:
             - name: model-vol
               mountPath: /model
@@ -79,14 +65,16 @@ spec:
               memory: 256Mi
               cpu: 250m
           readinessProbe:
-            tcpSocket:
-              port: 8080
-            initialDelaySeconds: 3
+            httpGet:
+              path: /
+              port: 9090
+            initialDelaySeconds: 5
             periodSeconds: 10
           livenessProbe:
-            tcpSocket:
-              port: 8080
-            initialDelaySeconds: 5
+            httpGet:
+              path: /
+              port: 9090
+            initialDelaySeconds: 10
             periodSeconds: 30
 
       volumes:

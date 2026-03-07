@@ -1,8 +1,8 @@
-"""Minimal HTTP server that serves the ONNX model file and a version string.
+"""Minimal HTTP server that serves the ONNX model file and a version hash.
 Endpoints:
-  GET /model          → returns fire_detection.onnx binary
-  GET /version        → returns plain-text version string (md5 of file)
-  GET /health         → 200
+  GET /model    → fire_detection.onnx binary
+  GET /version  → md5 hash (plain text)
+  GET /health   → 200 ok
 """
 
 import hashlib

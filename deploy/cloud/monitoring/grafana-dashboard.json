@@ -13,21 +13,16 @@
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
       "options": {
         "basemap": { "config": {}, "name": "Layer 0", "type": "default" },
-        "controls": { "mouseWheelZoom": true, "showAttribution": true, "showDebug": false, "showMeasure": false, "showScale": true, "showZoom": true },
+        "controls": { "mouseWheelZoom": true, "showScale": true, "showZoom": true },
         "layers": [
           {
             "config": {
               "showLegend": true,
               "style": {
-                "color": {
-                  "field": "Value",
-                  "fixed": "dark-green"
-                },
+                "color": { "field": "Value", "fixed": "dark-green" },
                 "opacity": 0.8,
-                "rotation": { "fixed": 0, "max": 360, "min": -360, "mode": "fixed" },
                 "size": { "field": "Value", "fixed": 10, "max": 20, "min": 5 },
-                "symbol": { "fixed": "img/icons/marker/circle.svg", "mode": "fixed" },
-                "textConfig": { "fontSize": 12, "offsetX": 0, "offsetY": 0, "textAlign": "center", "textBaseline": "middle" }
+                "symbol": { "fixed": "img/icons/marker/circle.svg", "mode": "fixed" }
               }
             },
             "location": { "latitude": "lat", "longitude": "lon", "mode": "fields" },
@@ -67,7 +62,7 @@
       }
     },
     {
-      "title": "Detection Rate (per location)",
+      "title": "Detection Rate by Location",
       "type": "timeseries",
       "gridPos": { "h": 8, "w": 12, "x": 0, "y": 14 },
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
@@ -84,7 +79,7 @@
       }
     },
     {
-      "title": "Inference Latency (p95)",
+      "title": "Inference Latency p95",
       "type": "timeseries",
       "gridPos": { "h": 8, "w": 12, "x": 12, "y": 14 },
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
@@ -101,44 +96,26 @@
       }
     },
     {
-      "title": "Total Detections",
+      "title": "Total Fire Alerts",
       "type": "stat",
       "gridPos": { "h": 4, "w": 8, "x": 0, "y": 22 },
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-      "targets": [
-        {
-          "expr": "sum(fire_detection_total{result=\"fire\"})",
-          "legendFormat": "fire",
-          "refId": "A"
-        }
-      ],
-      "fieldConfig": { "defaults": { "color": { "mode": "thresholds" }, "thresholds": { "steps": [{ "color": "green", "value": null }, { "color": "red", "value": 10 }] } }, "overrides": [] }
+      "targets": [{ "expr": "sum(fire_detection_total{result=\"fire\"})", "refId": "A" }],
+      "fieldConfig": { "defaults": { "thresholds": { "steps": [{ "color": "green", "value": null }, { "color": "red", "value": 10 }] } } }
     },
     {
       "title": "Active Locations",
       "type": "stat",
       "gridPos": { "h": 4, "w": 8, "x": 8, "y": 22 },
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-      "targets": [
-        {
-          "expr": "count(fire_detection_confidence)",
-          "legendFormat": "locations",
-          "refId": "A"
-        }
-      ]
+      "targets": [{ "expr": "count(fire_detection_confidence)", "refId": "A" }]
     },
     {
       "title": "Inference Pods",
       "type": "stat",
       "gridPos": { "h": 4, "w": 8, "x": 16, "y": 22 },
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-      "targets": [
-        {
-          "expr": "count(up{job=\"fire-detection\"})",
-          "legendFormat": "pods",
-          "refId": "A"
-        }
-      ]
+      "targets": [{ "expr": "count(up{job=\"fire-detection\"})", "refId": "A" }]
     }
   ],
   "schemaVersion": 39,
@@ -148,9 +125,7 @@
       {
         "current": {},
         "hide": 0,
-        "includeAll": false,
         "name": "DS_PROMETHEUS",
-        "options": [],
         "query": "prometheus",
         "refresh": 1,
         "type": "datasource"

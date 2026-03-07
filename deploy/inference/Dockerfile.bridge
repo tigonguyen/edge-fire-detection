@@ -1,6 +1,0 @@
-FROM python:3.11-slim
-RUN pip install --no-cache-dir paho-mqtt requests prometheus_client
-WORKDIR /app
-COPY bridge.py .
-EXPOSE 9090
-CMD ["python", "bridge.py"]

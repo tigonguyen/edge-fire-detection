@@ -5,13 +5,11 @@ metadata:
   namespace: fire-detection
   labels:
     app: inference
+    tier: edge
 spec:
   selector:
     app: inference
   ports:
-    - port: 8080
-      targetPort: 8080
-      name: http
     - port: 9090
       targetPort: 9090
       name: metrics

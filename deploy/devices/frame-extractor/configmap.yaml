@@ -4,9 +4,6 @@ metadata:
   name: frame-sources
   namespace: fire-detection
 data:
-  # Each entry: a video file mapped to a GPS location on the map.
-  # In production these would be real camera feeds; here we simulate
-  # with local video files mounted into /videos.
   sources.json: |
     [
       {

@@ -5,6 +5,8 @@ kind: CronJob
 metadata:
   name: model-sync
   namespace: fire-detection
+  labels:
+    tier: cloud
 spec:
   schedule: "*/5 * * * *"
   successfulJobsHistoryLimit: 1
@@ -24,7 +26,8 @@ spec:
               args:
                 - |
                   CURRENT=$(wget -qO- http://model-server.fire-detection.svc:8000/version)
-                  STORED=$(kubectl get cm model-version -n fire-detection -o jsonpath='{.data.version}' 2>/dev/null || echo "none")
+                  STORED=$(kubectl get cm model-version -n fire-detection \
+                    -o jsonpath='{.data.version}' 2>/dev/null || echo "none")
                   if [ "$CURRENT" != "$STORED" ]; then
                     echo "New model detected ($STORED -> $CURRENT). Rolling restart..."
                     kubectl create cm model-version -n fire-detection \

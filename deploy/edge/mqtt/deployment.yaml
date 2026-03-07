@@ -5,6 +5,7 @@ metadata:
   namespace: fire-detection
   labels:
     app: mqtt-broker
+    tier: edge
 spec:
   replicas: 1
   selector:
@@ -14,9 +15,10 @@ spec:
     metadata:
       labels:
         app: mqtt-broker
+        tier: edge
     spec:
       nodeSelector:
-        node-role: cloud
+        node-role: edge
       containers:
         - name: mosquitto
           image: eclipse-mosquitto:2

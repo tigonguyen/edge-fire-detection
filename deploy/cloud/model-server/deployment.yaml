@@ -5,6 +5,7 @@ metadata:
   namespace: fire-detection
   labels:
     app: model-server
+    tier: cloud
 spec:
   replicas: 1
   selector:
@@ -14,6 +15,7 @@ spec:
     metadata:
       labels:
         app: model-server
+        tier: cloud
     spec:
       nodeSelector:
         node-role: cloud
@@ -49,6 +51,9 @@ kind: Service
 metadata:
   name: model-server
   namespace: fire-detection
+  labels:
+    app: model-server
+    tier: cloud
 spec:
   selector:
     app: model-server

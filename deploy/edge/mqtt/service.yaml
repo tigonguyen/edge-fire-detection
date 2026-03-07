@@ -3,6 +3,9 @@ kind: Service
 metadata:
   name: mqtt-broker
   namespace: fire-detection
+  labels:
+    app: mqtt-broker
+    tier: edge
 spec:
   selector:
     app: mqtt-broker
