@@ -6,13 +6,19 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential cmake wget ca-certificates libmosquitto-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Download ONNX Runtime
+# Download ONNX Runtime (auto-detect arch)
 ARG ONNX_VERSION=1.16.3
-ARG TARGETARCH=x64
-RUN wget -q https://github.com/microsoft/onnxruntime/releases/download/v${ONNX_VERSION}/onnxruntime-linux-${TARGETARCH}-${ONNX_VERSION}.tgz \
-    && tar xzf onnxruntime-linux-${TARGETARCH}-${ONNX_VERSION}.tgz -C /opt \
-    && rm onnxruntime-linux-${TARGETARCH}-${ONNX_VERSION}.tgz
-ENV ONNXRUNTIME_ROOT=/opt/onnxruntime-linux-${TARGETARCH}-${ONNX_VERSION}
+ARG TARGETPLATFORM
+RUN set -e; \
+    case "${TARGETPLATFORM}" in \
+      linux/arm64) ORT_ARCH=aarch64 ;; \
+      *)           ORT_ARCH=x64     ;; \
+    esac; \
+    wget -q "https://github.com/microsoft/onnxruntime/releases/download/v${ONNX_VERSION}/onnxruntime-linux-${ORT_ARCH}-${ONNX_VERSION}.tgz" \
+    && tar xzf "onnxruntime-linux-${ORT_ARCH}-${ONNX_VERSION}.tgz" -C /opt \
+    && rm "onnxruntime-linux-${ORT_ARCH}-${ONNX_VERSION}.tgz" \
+    && ln -s "/opt/onnxruntime-linux-${ORT_ARCH}-${ONNX_VERSION}" /opt/onnxruntime
+ENV ONNXRUNTIME_ROOT=/opt/onnxruntime
 
 # Build
 WORKDIR /build
@@ -23,19 +29,18 @@ RUN mkdir out && cd out \
     && make install \
     && strip /app/bin/fire_inference
 
-# ── Stage 2: Runtime (tiny) ──────────────────────────────────────────
-FROM debian:bookworm-slim
+# Collect only the mosquitto runtime .so (+ its cjson dep) into /staging
+RUN mkdir /staging && \
+    cp /usr/lib/*/libmosquitto.so* /staging/ && \
+    cp /usr/lib/*/libcjson.so* /staging/ 2>/dev/null || true
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    libmosquitto1 libgomp1 \
-    && rm -rf /var/lib/apt/lists/*
+# ── Stage 2: Distroless runtime (glibc + libstdc++ + libgomp + libssl) ─
+FROM gcr.io/distroless/cc-debian12
 
-COPY --from=builder /app/bin/fire_inference /usr/local/bin/
+COPY --from=builder /app/bin/fire_inference /usr/local/bin/fire_inference
+COPY --from=builder /opt/onnxruntime/lib/ /opt/onnxruntime/lib/
+COPY --from=builder /staging/ /usr/lib/
 
-ARG ONNX_VERSION=1.16.3
-ARG TARGETARCH=x64
-COPY --from=builder /opt/onnxruntime-linux-${TARGETARCH}-${ONNX_VERSION}/lib /opt/onnxruntime/lib
 ENV LD_LIBRARY_PATH=/opt/onnxruntime/lib
-
 EXPOSE 9090
-ENTRYPOINT ["fire_inference"]
+ENTRYPOINT ["/usr/local/bin/fire_inference"]
