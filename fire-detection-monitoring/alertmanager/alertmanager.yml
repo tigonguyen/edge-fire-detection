@@ -6,7 +6,9 @@
 # - This avoids duplicate notifications while supporting photos
 #
 global:
-  resolve_timeout: 15m
+  # Giảm resolve_timeout để alert được đánh dấu resolved nhanh hơn
+  # Khi metric biến mất khỏi Prometheus, sau 2 phút Alertmanager sẽ coi là resolved
+  resolve_timeout: 2m
   telegram_api_url: "https://api.telegram.org"
 
 route:
@@ -39,11 +41,14 @@ receivers:
       - bot_token: '${TELEGRAM_BOT_TOKEN}'
         chat_id: ${TELEGRAM_CHAT_ID}
         parse_mode: 'HTML'
+        # Gửi notification khi alert được resolved để xác nhận
+        send_resolved: true
         message: |
-          {{ range .Alerts }}
+          {{ if eq .Status "firing" }}
+          {{ range .Alerts.Firing }}
           ⏰ <b>NHẮC NHỞ: CẢNH BÁO CHÁY CHƯA ĐƯỢC XỬ LÝ!</b>
 
-          🔥 Alert vẫn đang active sau 5 phút
+          🔥 Alert vẫn đang active
 
           📍 <b>Vị trí:</b> {{ .Labels.location }}
           🌍 <b>Tọa độ:</b> <a href="https://maps.google.com/?q={{ .Labels.latitude }},{{ .Labels.longitude }}">{{ .Labels.latitude }}, {{ .Labels.longitude }}</a>
@@ -55,6 +60,17 @@ receivers:
           📡 Device: <code>{{ .Labels.device_id }}</code>
 
           ⚠️ <b>Vui lòng kiểm tra và xác nhận xử lý!</b>
+          {{ end }}
+          {{ else }}
+          {{ range .Alerts.Resolved }}
+          ✅ <b>ALERT ĐÃ ĐƯỢC XỬ LÝ (Alertmanager)</b>
+
+          📍 <b>Vị trí:</b> {{ .Labels.location }}
+          🆔 Alert ID: <code>{{ .Labels.alert_id }}</code>
+          ⏰ <b>Resolved lúc:</b> {{ .EndsAt.Format "2006-01-02 15:04:05" }}
+
+          ✅ Không còn nhận reminder cho alert này.
+          {{ end }}
           {{ end }}
 
 # Inhibit rules

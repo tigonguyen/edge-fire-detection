@@ -248,7 +248,7 @@ class FireDetectionMetrics:
             if alert_id in self.active_alerts:
                 alert = self.active_alerts.pop(alert_id)
 
-                # Remove from Prometheus
+                # Remove from Prometheus - sử dụng keyword args để đảm bảo đúng thứ tự
                 try:
                     self.fire_alert_gauge.remove(
                         alert.alert_id,
@@ -260,6 +260,19 @@ class FireDetectionMetrics:
                         alert.detected_at,
                         alert.image_url
                     )
+                    print(f"Removed fire_alert_gauge metric for {alert_id}")
+                except KeyError as e:
+                    print(f"Warning: Could not remove metric for {alert_id}: {e}")
+
+                # Cũng cần remove confidence_gauge để alert biến mất hoàn toàn
+                try:
+                    self.confidence_gauge.remove(
+                        alert.device_id,
+                        str(alert.latitude),
+                        str(alert.longitude),
+                        alert.location
+                    )
+                    print(f"Removed fire_confidence_latest metric for {alert_id}")
                 except KeyError:
                     pass
 
