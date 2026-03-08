@@ -329,6 +329,86 @@ def test_all_regions():
     return alerts
 
 
+def send_device_status(device_id: str = None, status: str = "online", location: dict = None):
+    """Send device status/heartbeat via MQTT"""
+    client = mqtt.Client(CallbackAPIVersion.VERSION2)
+    client.connect(MQTT_BROKER, MQTT_PORT)
+
+    if device_id is None:
+        device_id = f"edge_device_{random.randint(1, 10):03d}"
+
+    # Use provided location or pick a random one from Vietnam forests
+    if location is None:
+        location = random.choice(VIETNAM_FOREST_LOCATIONS)
+
+    device_status = {
+        "device_id": device_id,
+        "status": status,  # online, offline
+        "timestamp": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "battery": random.randint(20, 100),  # percentage
+        "temperature": round(25 + random.random() * 20, 1),  # 25-45 celsius
+        "uptime": random.randint(3600, 86400 * 30),  # seconds (1h to 30 days)
+        "firmware_version": "1.2.3",
+        "last_detection": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "location": {
+            "lat": location["lat"],
+            "lon": location["lon"],
+            "name": location["name"],
+        }
+    }
+
+    client.publish("wildfire/devices/status", json.dumps(device_status))
+    client.disconnect()
+
+    print(f"[DEVICE STATUS] Sent status update:")
+    print(f"  - Device ID: {device_id}")
+    print(f"  - Status: {status}")
+    print(f"  - Location: {location['name']}")
+    print(f"  - Coordinates: {location['lat']}, {location['lon']}")
+    print(f"  - Battery: {device_status['battery']}%")
+    print(f"  - Temperature: {device_status['temperature']}°C")
+    print(f"  - Uptime: {device_status['uptime']} seconds")
+
+    return device_status
+
+
+def test_device_status(device_id: str = None, count: int = 1):
+    """Test device status/heartbeat messages"""
+    print("\n" + "="*50)
+    print("TEST: Device Status/Heartbeat")
+    print("="*50)
+
+    statuses = []
+    for i in range(count):
+        if count > 1:
+            print(f"\n--- Device {i+1}/{count} ---")
+            # Generate unique device IDs for multiple devices
+            dev_id = device_id if device_id and count == 1 else f"edge_device_{i+1:03d}"
+        else:
+            dev_id = device_id
+
+        status = send_device_status(device_id=dev_id, status="online")
+        statuses.append(status)
+        if count > 1 and i < count - 1:
+            time.sleep(0.5)
+
+    return statuses
+
+
+def test_resolved_standalone(alert_id: str = None, resolution_type: str = "extinguished"):
+    """Test sending a resolved alert standalone (without sending alert first)"""
+    print("\n" + "="*50)
+    print("TEST: Resolved Alert (Standalone)")
+    print("="*50)
+
+    if alert_id is None:
+        alert_id = f"alert_{int(time.time())}_{random.randint(100, 999)}"
+        print(f"[INFO] Generated alert_id: {alert_id}")
+
+    resolution = send_resolved_alert(alert_id, resolution_type=resolution_type)
+    return resolution
+
+
 def verify_exporter():
     """Verify exporter is receiving alerts"""
     print("\n--- Verifying Exporter ---")
@@ -371,13 +451,23 @@ def main():
     parser = argparse.ArgumentParser(description="Fire Detection Test Suite")
     parser.add_argument("--test", "-t", type=str, default="single",
                        choices=["single", "smoke", "resolve", "false_positive",
-                               "contained", "multi_region", "all_regions", "full"],
+                               "contained", "multi_region", "all_regions",
+                               "device_status", "resolved", "full"],
                        help="Test case to run")
     parser.add_argument("--region", "-r", type=str, default=None,
                        choices=["north", "central", "south"],
                        help="Region filter for alerts")
     parser.add_argument("--verify", "-v", action="store_true",
                        help="Verify exporter and Prometheus after test")
+    parser.add_argument("--device", type=str, default=None,
+                       help="Device ID for device_status test")
+    parser.add_argument("--count", type=int, default=1,
+                       help="Number of devices for device_status test")
+    parser.add_argument("--alert-id", type=str, default=None,
+                       help="Alert ID for resolved test")
+    parser.add_argument("--resolution", type=str, default="extinguished",
+                       choices=["extinguished", "false_positive", "contained"],
+                       help="Resolution type for resolved test")
 
     args = parser.parse_args()
 
@@ -400,6 +490,10 @@ def main():
         test_multiple_alerts_same_region()
     elif args.test == "all_regions":
         test_all_regions()
+    elif args.test == "device_status":
+        test_device_status(device_id=args.device, count=args.count)
+    elif args.test == "resolved":
+        test_resolved_standalone(alert_id=args.alert_id, resolution_type=args.resolution)
     elif args.test == "full":
         print("\n>>> Running all test cases <<<\n")
         test_single_fire_alert()
@@ -411,6 +505,10 @@ def main():
         test_false_positive()
         time.sleep(2)
         test_contained_fire()
+        time.sleep(2)
+        test_device_status(count=3)
+        time.sleep(2)
+        test_resolved_standalone()
 
     if args.verify:
         print("\n" + "="*50)

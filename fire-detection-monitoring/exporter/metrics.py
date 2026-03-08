@@ -86,6 +86,33 @@ class FireDetectionMetrics:
             ]
         )
 
+        # 3b. Device battery level
+        self.device_battery_gauge = Gauge(
+            'fire_device_battery',
+            'Device battery percentage',
+            labelnames=['device_id', 'latitude', 'longitude', 'location']
+        )
+
+        # 3c. Device temperature
+        self.device_temperature_gauge = Gauge(
+            'fire_device_temperature',
+            'Device temperature in Celsius',
+            labelnames=['device_id', 'latitude', 'longitude', 'location']
+        )
+
+        # 3d. Device uptime
+        self.device_uptime_gauge = Gauge(
+            'fire_device_uptime',
+            'Device uptime in seconds',
+            labelnames=['device_id', 'latitude', 'longitude', 'location']
+        )
+
+        # 3e. Online devices count
+        self.online_devices_gauge = Gauge(
+            'fire_online_devices_count',
+            'Number of online devices'
+        )
+
         # 4. Total alerts counter
         self.alerts_total = Counter(
             'fire_alerts_total',
@@ -171,7 +198,8 @@ class FireDetectionMetrics:
         self.active_alerts_gauge.set(len(self.active_alerts))
 
     def update_device_status(self, device_id: str, latitude: float,
-                            longitude: float, location: str, is_online: bool):
+                            longitude: float, location: str, is_online: bool,
+                            battery: int = 0, temperature: float = 0, uptime: int = 0):
         """Update device status"""
         with self.lock:
             self.device_status[device_id] = {
@@ -179,15 +207,39 @@ class FireDetectionMetrics:
                 'longitude': longitude,
                 'location': location,
                 'is_online': is_online,
+                'battery': battery,
+                'temperature': temperature,
+                'uptime': uptime,
                 'last_seen': time.time()
             }
 
-            self.device_status_gauge.labels(
-                device_id=device_id,
-                latitude=str(latitude),
-                longitude=str(longitude),
-                location=location
-            ).set(1 if is_online else 0)
+            label_values = {
+                'device_id': device_id,
+                'latitude': str(latitude),
+                'longitude': str(longitude),
+                'location': location
+            }
+
+            # Update device status gauge
+            self.device_status_gauge.labels(**label_values).set(1 if is_online else 0)
+
+            # Update battery gauge
+            if battery > 0:
+                self.device_battery_gauge.labels(**label_values).set(battery)
+
+            # Update temperature gauge
+            if temperature > 0:
+                self.device_temperature_gauge.labels(**label_values).set(temperature)
+
+            # Update uptime gauge
+            if uptime > 0:
+                self.device_uptime_gauge.labels(**label_values).set(uptime)
+
+            # Update online devices count
+            online_count = sum(1 for d in self.device_status.values() if d.get('is_online'))
+            self.online_devices_gauge.set(online_count)
+
+            print(f"Updated device status: {device_id} (online={is_online}, battery={battery}%, temp={temperature}°C)")
 
     def remove_alert(self, alert_id: str, resolution_type: str = "resolved",
                      resolved_by: str = "unknown"):

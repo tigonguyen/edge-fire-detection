@@ -369,14 +369,19 @@
       },
       "targets": [
         {
-          "expr": "increase(fire_alerts_total[10m])",
-          "legendFormat": "New Alerts",
+          "expr": "fire_active_alerts_count",
+          "legendFormat": "Active Alerts",
           "refId": "A"
         },
         {
-          "expr": "increase(fire_resolved_total[10m])",
-          "legendFormat": "Resolved",
+          "expr": "sum(increase(fire_alerts_total[1h])) or vector(0)",
+          "legendFormat": "New (1h)",
           "refId": "B"
+        },
+        {
+          "expr": "fire_resolved_count",
+          "legendFormat": "Resolved",
+          "refId": "C"
         }
       ],
       "options": {
@@ -394,12 +399,19 @@
           "custom": {
             "axisLabel": "",
             "axisPlacement": "auto",
+            "axisSoftMin": 0,
+            "axisSoftMax": 10,
             "drawStyle": "line",
             "fillOpacity": 20,
             "lineWidth": 2,
             "pointSize": 5,
-            "showPoints": "auto"
-          }
+            "showPoints": "auto",
+            "scaleDistribution": {
+              "type": "linear"
+            }
+          },
+          "min": 0,
+          "decimals": 0
         }
       }
     },

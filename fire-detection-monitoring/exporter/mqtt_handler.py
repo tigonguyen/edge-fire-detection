@@ -60,7 +60,8 @@ class MQTTHandler:
             client.subscribe("wildfire/alerts")
             client.subscribe("wildfire/heartbeat")
             client.subscribe("wildfire/resolved")
-            print("Subscribed to wildfire/alerts, wildfire/heartbeat, wildfire/resolved")
+            client.subscribe("wildfire/devices/status")
+            print("Subscribed to wildfire/alerts, wildfire/heartbeat, wildfire/resolved, wildfire/devices/status")
         else:
             print(f"Failed to connect, return code: {rc}")
 
@@ -83,6 +84,8 @@ class MQTTHandler:
                 self._handle_heartbeat(payload)
             elif topic == "wildfire/resolved":
                 self._handle_resolved(payload)
+            elif topic == "wildfire/devices/status":
+                self._handle_device_status(payload)
 
         except json.JSONDecodeError as e:
             print(f"Invalid JSON in message: {e}")
@@ -175,6 +178,46 @@ class MQTTHandler:
             longitude=longitude,
             location=location_name,
             is_online=True
+        )
+
+    def _handle_device_status(self, payload: dict):
+        """Process device status update from wildfire/devices/status topic"""
+        device_id = payload.get('device_id', '')
+        status = payload.get('status', 'offline')
+        is_online = status.lower() == 'online'
+
+        # Get location from payload or use defaults based on device_id
+        location_data = payload.get('location', {})
+        if location_data:
+            latitude = location_data.get('lat', 0)
+            longitude = location_data.get('lon', 0)
+            location_name = location_data.get('name', 'Unknown')
+        else:
+            # Use device's last known location or default Vietnam coordinates
+            existing = self.metrics.device_status.get(device_id, {})
+            latitude = existing.get('latitude', 21.0285)  # Hanoi default
+            longitude = existing.get('longitude', 105.8542)
+            location_name = existing.get('location', f'Device {device_id}')
+
+        # Extract additional device info
+        battery = payload.get('battery', 0)
+        temperature = payload.get('temperature', 0)
+        uptime = payload.get('uptime', 0)
+
+        print(f"[DEVICE STATUS] {device_id}: {status}")
+        print(f"  - Battery: {battery}%")
+        print(f"  - Temperature: {temperature}°C")
+        print(f"  - Uptime: {uptime}s")
+
+        self.metrics.update_device_status(
+            device_id=device_id,
+            latitude=latitude,
+            longitude=longitude,
+            location=location_name,
+            is_online=is_online,
+            battery=battery,
+            temperature=temperature,
+            uptime=uptime
         )
 
     def _handle_resolved(self, payload: dict):

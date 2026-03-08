@@ -23,19 +23,19 @@ docker-compose up -d
 Gui mot canh bao phat hien chay tai mot khu rung ngau nhien o Viet Nam (co kem hinh anh).
 
 ```bash
-python test_fire_alerts.py --test single
+./test_fire_alerts.py --test single
 ```
 
 **Loc theo vung:**
 ```bash
 # Mien Bac
-python test_fire_alerts.py --test single --region north
+./test_fire_alerts.py --test single --region north
 
 # Mien Trung
-python test_fire_alerts.py --test single --region central
+./test_fire_alerts.py --test single --region central
 
 # Mien Nam
-python test_fire_alerts.py --test single --region south
+./test_fire_alerts.py --test single --region south
 ```
 
 **Ket qua mong doi:**
@@ -50,7 +50,7 @@ python test_fire_alerts.py --test single --region south
 Gui canh bao phat hien khoi (do tin cay thap hon chay).
 
 ```bash
-python test_fire_alerts.py --test smoke
+./test_fire_alerts.py --test smoke
 ```
 
 **Ket qua mong doi:**
@@ -64,7 +64,7 @@ python test_fire_alerts.py --test smoke
 Gui canh bao chay, sau do gui thong bao da dap tat.
 
 ```bash
-python test_fire_alerts.py --test resolve
+./test_fire_alerts.py --test resolve
 ```
 
 **Quy trinh:**
@@ -84,7 +84,7 @@ python test_fire_alerts.py --test resolve
 Gui canh bao roi danh dau la bao dong gia.
 
 ```bash
-python test_fire_alerts.py --test false_positive
+./test_fire_alerts.py --test false_positive
 ```
 
 **Quy trinh:**
@@ -103,7 +103,7 @@ python test_fire_alerts.py --test false_positive
 Gui canh bao chay lon, sau do danh dau da kiem soat duoc.
 
 ```bash
-python test_fire_alerts.py --test contained
+./test_fire_alerts.py --test contained
 ```
 
 **Quy trinh:**
@@ -122,7 +122,7 @@ python test_fire_alerts.py --test contained
 Gui 3 canh bao lien tiep trong cung mot vung.
 
 ```bash
-python test_fire_alerts.py --test multi_region
+./test_fire_alerts.py --test multi_region
 ```
 
 **Ket qua mong doi:**
@@ -136,7 +136,7 @@ python test_fire_alerts.py --test multi_region
 Gui canh bao tu ca 3 mien: Bac, Trung, Nam.
 
 ```bash
-python test_fire_alerts.py --test all_regions
+./test_fire_alerts.py --test all_regions
 ```
 
 **Ket qua mong doi:**
@@ -144,12 +144,85 @@ python test_fire_alerts.py --test all_regions
 
 ---
 
-### 8. Chay tat ca test case
+### 8. Test trang thai hoat dong cua thiet bi
+
+Gui trang thai hoat dong (heartbeat/status) cua thiet bi edge.
+
+```bash
+./test_fire_alerts.py --test device_status
+```
+
+**Tuy chon:**
+```bash
+# Gui trang thai cho thiet bi cu the
+./test_fire_alerts.py --test device_status --device edge_device_001
+
+# Gui trang thai cho nhieu thiet bi
+./test_fire_alerts.py --test device_status --count 5
+```
+
+**Ket qua mong doi:**
+- Thong tin trang thai thiet bi duoc gui qua MQTT topic `wildfire/devices/status`
+- Bao gom: device_id, status (online/offline), battery, temperature, uptime
+
+---
+
+### 9. Test gui resolved alert don le
+
+Gui thong bao resolved alert (khong can gui alert truoc).
+
+```bash
+./test_fire_alerts.py --test resolved
+```
+
+**Tuy chon resolution type:**
+```bash
+# Da dap tat
+./test_fire_alerts.py --test resolved --resolution extinguished
+
+# Bao dong gia
+./test_fire_alerts.py --test resolved --resolution false_positive
+
+# Da kiem soat
+./test_fire_alerts.py --test resolved --resolution contained
+```
+
+**Ket qua mong doi:**
+- Thong bao resolved duoc gui qua MQTT topic `wildfire/resolved`
+- Alert ID duoc tao tu dong
+
+---
+
+### 10. Test resolved alert cho alert ID cu the
+
+Gui thong bao resolved cho mot alert ID da biet.
+
+```bash
+./test_fire_alerts.py --test resolved --alert-id alert_1234567890_123
+```
+
+**Vi du su dung:**
+```bash
+# Buoc 1: Gui canh bao va ghi nho alert_id
+./test_fire_alerts.py --test single
+# Output: Alert ID: alert_1709123456_789
+
+# Buoc 2: Resolve alert do
+./test_fire_alerts.py --test resolved --alert-id alert_1709123456_789 --resolution extinguished
+```
+
+**Ket qua mong doi:**
+- Thong bao resolved duoc gui voi alert_id chinh xac
+- Exporter cap nhat trang thai alert tu "active" sang "resolved"
+
+---
+
+### 11. Chay tat ca test case
 
 Chay tuan tu tat ca cac test case.
 
 ```bash
-python test_fire_alerts.py --test full
+./test_fire_alerts.py --test full
 ```
 
 ---
@@ -159,7 +232,7 @@ python test_fire_alerts.py --test full
 ### Them flag `--verify` de kiem tra Exporter va Prometheus
 
 ```bash
-python test_fire_alerts.py --test single --verify
+./test_fire_alerts.py --test single --verify
 ```
 
 ### Kiem tra thu cong
@@ -196,7 +269,7 @@ curl http://localhost:9093/api/v1/alerts
 ```bash
 export MQTT_BROKER=192.168.1.100
 export MQTT_PORT=1883
-python test_fire_alerts.py --test single
+./test_fire_alerts.py --test single
 ```
 
 ---
@@ -251,3 +324,21 @@ curl http://localhost:8000/metrics
 ```
 2. Kiem tra Prometheus targets:
    - Truy cap http://localhost:9090/targets
+
+### Kiem tra device status
+```bash
+# Xem tat ca device status
+curl http://localhost:8000/metrics | grep device_status
+
+# Query Prometheus
+curl 'http://localhost:9090/api/v1/query?query=device_status_info'
+```
+
+### Kiem tra resolved alerts
+```bash
+# Xem resolved alerts trong exporter
+curl http://localhost:8000/metrics | grep fire_alert_resolved
+
+# Hoac kiem tra tren Alertmanager
+curl http://localhost:9093/api/v2/alerts | jq '.[] | select(.status.state == "resolved")'
+```
