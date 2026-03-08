@@ -4,7 +4,7 @@ apiVersion: batch/v1
 kind: CronJob
 metadata:
   name: model-sync
-  namespace: fire-detection
+  namespace: default
   labels:
     tier: cloud
 spec:
@@ -42,13 +42,13 @@ apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: model-sync
-  namespace: fire-detection
+  namespace: default
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   name: model-sync
-  namespace: fire-detection
+  namespace: default
 rules:
   - apiGroups: [""]
     resources: ["configmaps"]
@@ -61,7 +61,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   name: model-sync
-  namespace: fire-detection
+  namespace: default
 subjects:
   - kind: ServiceAccount
     name: model-sync

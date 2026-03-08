@@ -2,20 +2,22 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: frame-sources
-  namespace: fire-detection
+  namespace: default
 data:
   sources.json: |
     [
       {
         "id": "cam-binhphuoc-01",
-        "file": "Forest Fire with Drone Support.mp4",
+        "file": "Forest_Fire_with_Drone_Support.mp4",
+        "url": "https://storage.googleapis.com/camera-simulator/BinhPhuoc/Forest%20Fire%20with%20Drone%20Support.mp4",
         "lat": 11.75,
         "lon": 106.90,
         "description": "Binh Phuoc forest area"
       },
       {
         "id": "cam-dalat-01",
-        "file": "Heilbronn Germany _ Foggy Forest _ Cinematic Drone Video.mp4",
+        "file": "Heilbronn_Germany_Foggy_Forest_Cinematic_Drone_Video.mp4",
+        "url": "https://storage.googleapis.com/edge-fire-detection-assets/video_2.mp4",
         "lat": 11.94,
         "lon": 108.44,
         "description": "Da Lat pine forest"

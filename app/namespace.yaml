@@ -1,6 +1,0 @@
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: fire-detection
-  labels:
-    app.kubernetes.io/part-of: fire-detection

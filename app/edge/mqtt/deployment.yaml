@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: mqtt-broker
-  namespace: fire-detection
+  namespace: default
   labels:
     app: mqtt-broker
     tier: edge
@@ -45,7 +45,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: mqtt-config
-  namespace: fire-detection
+  namespace: default
 data:
   mosquitto.conf: |
     listener 1883

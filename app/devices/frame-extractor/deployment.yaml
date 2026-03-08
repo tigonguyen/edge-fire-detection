@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: frame-extractor
-  namespace: fire-detection
+  namespace: default
   labels:
     app: frame-extractor
     tier: devices
@@ -17,12 +17,10 @@ spec:
         app: frame-extractor
         tier: devices
     spec:
-      nodeSelector:
-        node-role: device
       containers:
         - name: extractor
           image: fire-frame-extractor:latest
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: Never
           env:
             - name: MQTT_HOST
               value: mqtt-broker.fire-detection.svc
@@ -35,18 +33,11 @@ spec:
           volumeMounts:
             - name: config
               mountPath: /config
-            - name: videos
-              mountPath: /videos
-              readOnly: true
           resources:
             limits:
-              memory: 512Mi
+              memory: 128Mi
               cpu: 500m
       volumes:
         - name: config
           configMap:
             name: frame-sources
-        - name: videos
-          hostPath:
-            path: /opt/fire-detection/videos
-            type: DirectoryOrCreate
