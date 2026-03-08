@@ -1,51 +1,80 @@
-# Fire Detection — C++ ONNX Runtime
+# Triển khai k3s — Hướng dẫn nhanh
 
-Minimal CLI that loads an EfficientNet-Lite0 ONNX model and classifies a single image as `fire` or `normal`.
+> Thiết kế chi tiết kiến trúc 3 tầng, luồng dữ liệu, và giải thích từng thành phần: xem [DESIGN.md](../DESIGN.md)
 
-## Prerequisites
+## Yêu cầu
 
-1. **ONNX model** — export from the trained checkpoint:
-   ```bash
-   python quantize_int8.py
-   ```
-   Produces `fire_detection.onnx`.
+- k3s cluster: cloud (master) + edge node(s) + device node(s)
+- Helm 3 (cho Prometheus + Grafana)
+- Docker (build image)
 
-2. **ONNX Runtime** — download the C++ package:
-   ```bash
-   wget https://github.com/microsoft/onnxruntime/releases/download/v1.16.3/onnxruntime-linux-x64-1.16.3.tgz
-   tar xzf onnxruntime-linux-x64-1.16.3.tgz
-   export ONNXRUNTIME_ROOT=$(pwd)/onnxruntime-linux-x64-1.16.3
-   ```
-
-## Build
+## 1. Cài k3s cluster
 
 ```bash
-cd app
-mkdir -p build && cd build
-cmake -DCMAKE_BUILD_TYPE=Release ..
-make
+# Cloud master
+bash deploy/k3s/install-master.sh
+
+# Edge node
+bash deploy/k3s/join-edge.sh <MASTER_IP> <TOKEN>
+# Sau đó label: kubectl label node <edge> node-role=edge
+
+# Device node
+bash deploy/k3s/join-edge.sh <MASTER_IP> <TOKEN>
+# Sau đó label: kubectl label node <device> node-role=device
 ```
 
-## Run
+## 2. Build Docker images
 
 ```bash
-# Convert any image to raw 224x224 RGB
-python app/prepare_input.py photo.jpg test_input.rgb
+# Devices: frame extractor
+docker build -t fire-frame-extractor deploy/devices/frame-extractor/
 
-# Inference
-./build/fire_backend fire_detection.onnx test_input.rgb
+# Edge: inference (Python ONNX + MQTT + Prometheus)
+docker build -t fire-inference deploy/edge/inference/
+
+# Cloud: model server
+docker build -t fire-model-server deploy/cloud/model-server/
 ```
 
-Output:
-```
-class:      fire
-confidence: 0.973
+## 3. Chuẩn bị dữ liệu
+
+```bash
+# Cloud node: copy ONNX model
+sudo mkdir -p /opt/fire-detection/models
+sudo cp fire_detection.onnx /opt/fire-detection/models/
+
+# Device node: copy video files
+sudo mkdir -p /opt/fire-detection/videos
+sudo cp *.mp4 /opt/fire-detection/videos/
 ```
 
-## Files
+## 4. Triển khai
 
-- `src/main.cpp` — load model, read raw image, inference, print result
-- `include/preprocess.h` — ImageNet normalization (HWC uint8 → CHW float32)
-- `prepare_input.py` — convert JPEG/PNG to raw 224×224 RGB
-- `CMakeLists.txt` — CMake build with ONNX Runtime
-- `Dockerfile` — multi-stage build for container deployment
+```bash
+kubectl apply -f deploy/namespace.yaml
+
+# Cloud
+kubectl apply -f deploy/cloud/model-server/
+kubectl apply -f deploy/cloud/model-sync/
+
+# Edge
+kubectl apply -f deploy/edge/mqtt/
+kubectl apply -f deploy/edge/inference/
+
+# Devices
+kubectl apply -f deploy/devices/frame-extractor/
+
+# Monitoring
+bash deploy/cloud/monitoring/install.sh
+```
+
+Grafana: `http://<MASTER_IP>:30300` (admin / fire-admin)
+Import dashboard từ `deploy/cloud/monitoring/grafana-dashboard.json`.
+
+## 5. Kiểm tra
+
+```bash
+kubectl get pods -n fire-detection -o wide
+kubectl logs -n fire-detection deployment/inference
+kubectl get hpa -n fire-detection
+```
