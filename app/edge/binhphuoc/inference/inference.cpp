@@ -374,7 +374,7 @@ int main() {
 
     // MQTT
     mosquitto_lib_init();
-    struct mosquitto* mosq = mosquitto_new("fire-inference", true, nullptr);
+    struct mosquitto* mosq = mosquitto_new(nullptr, true, nullptr);
     if (!mosq) { std::fprintf(stderr, "mosquitto_new failed\n"); return 1; }
 
     mosquitto_connect_callback_set(mosq, on_connect);

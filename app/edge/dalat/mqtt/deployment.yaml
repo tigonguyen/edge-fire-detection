@@ -1,11 +1,12 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: mqtt-broker
+  name: mqtt-broker-dalat
   namespace: default
   labels:
     app: mqtt-broker
     tier: edge
+    location: dalat
 spec:
   replicas: 1
   selector:
@@ -16,6 +17,7 @@ spec:
       labels:
         app: mqtt-broker
         tier: edge
+        location: dalat
     spec:
       containers:
         - name: mosquitto

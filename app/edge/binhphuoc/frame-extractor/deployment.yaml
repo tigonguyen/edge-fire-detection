@@ -1,0 +1,46 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frame-extractor-binhphuoc
+  namespace: default
+  labels:
+    app: frame-extractor
+    tier: devices
+    location: binhphuoc
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: frame-extractor
+      location: binhphuoc
+  template:
+    metadata:
+      labels:
+        app: frame-extractor
+        tier: devices
+        location: binhphuoc
+    spec:
+      containers:
+        - name: extractor
+          image: fire-frame-extractor:latest
+          imagePullPolicy: Never
+          env:
+            - name: MQTT_HOST
+              value: mqtt-broker-binhphuoc.default.svc
+            - name: FRAME_INTERVAL
+              value: "2"
+            - name: SOURCES_JSON
+              value: /config/sources.json
+            - name: VIDEO_DIR
+              value: /videos
+          volumeMounts:
+            - name: config
+              mountPath: /config
+          resources:
+            limits:
+              memory: 128Mi
+              cpu: 500m
+      volumes:
+        - name: config
+          configMap:
+            name: frame-sources-binhphuoc

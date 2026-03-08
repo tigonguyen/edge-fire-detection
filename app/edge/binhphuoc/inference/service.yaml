@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: inference-binhphuoc
+  namespace: default
+  labels:
+    app: inference
+    tier: edge
+spec:
+  selector:
+    app: inference
+    location: binhphuoc
+  ports:
+    - port: 9090
+      targetPort: 9090
+      name: metrics

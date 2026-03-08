@@ -31,5 +31,6 @@ ENV MQTT_HOST="mqtt-broker.default.svc"
 ENV MQTT_PORT="1883"
 ENV SOURCES_JSON="/config/sources.json"
 ENV VIDEO_DIR="/videos"
+RUN mkdir -p /videos
 
 ENTRYPOINT ["fire_frame_extractor"]

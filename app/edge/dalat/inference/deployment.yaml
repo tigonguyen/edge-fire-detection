@@ -1,11 +1,12 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: inference
+  name: inference-dalat
   namespace: default
   labels:
     app: inference
     tier: edge
+    location: dalat
 spec:
   replicas: 1
   selector:
@@ -16,12 +17,11 @@ spec:
       labels:
         app: inference
         tier: edge
+        location: dalat
       annotations:
         prometheus.io/scrape: "true"
         prometheus.io/port: "9090"
     spec:
-      nodeSelector:
-        node-role: edge
 
       initContainers:
         - name: model-init
@@ -43,7 +43,7 @@ spec:
           imagePullPolicy: IfNotPresent
           env:
             - name: MQTT_HOST
-              value: mqtt-broker.default.svc
+              value: mqtt-broker-dalat.default.svc
             - name: MODEL_PATH
               value: /model/fire_detection.onnx
             - name: METRICS_PORT

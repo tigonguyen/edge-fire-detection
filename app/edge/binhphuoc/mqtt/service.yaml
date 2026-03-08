@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: mqtt-broker
+  name: mqtt-broker-binhphuoc
   namespace: default
   labels:
     app: mqtt-broker
@@ -9,6 +9,7 @@ metadata:
 spec:
   selector:
     app: mqtt-broker
+    location: binhphuoc
   ports:
     - port: 1883
       targetPort: 1883

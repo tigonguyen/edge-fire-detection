@@ -1,21 +1,24 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: frame-extractor
+  name: frame-extractor-dalat
   namespace: default
   labels:
     app: frame-extractor
     tier: devices
+    location: dalat
 spec:
   replicas: 1
   selector:
     matchLabels:
       app: frame-extractor
+      location: dalat
   template:
     metadata:
       labels:
         app: frame-extractor
         tier: devices
+        location: dalat
     spec:
       containers:
         - name: extractor
@@ -23,7 +26,7 @@ spec:
           imagePullPolicy: Never
           env:
             - name: MQTT_HOST
-              value: mqtt-broker.default.svc
+              value: mqtt-broker-dalat.default.svc
             - name: FRAME_INTERVAL
               value: "2"
             - name: SOURCES_JSON
@@ -40,4 +43,4 @@ spec:
       volumes:
         - name: config
           configMap:
-            name: frame-sources
+            name: frame-sources-dalat

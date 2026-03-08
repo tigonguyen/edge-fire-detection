@@ -121,6 +121,10 @@ static bool download_file(const std::string& url, const std::string& out_path) {
     curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
 
     CURLcode res = curl_easy_perform(curl);
+    
+    long http_code = 0;
+    curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
+    
     fclose(fp);
     curl_easy_cleanup(curl);
 
@@ -129,6 +133,13 @@ static bool download_file(const std::string& url, const std::string& out_path) {
         std::remove(out_path.c_str());
         return false;
     }
+    
+    if (http_code >= 400) {
+        std::cerr << "HTTP Error downloading file. Code: " << http_code << std::endl;
+        std::remove(out_path.c_str());
+        return false;
+    }
+    
     return true;
 }
 
@@ -244,7 +255,7 @@ int main() {
 
     // Init Mosquitto
     mosquitto_lib_init();
-    g_mosq = mosquitto_new("frame-extractor", true, nullptr);
+    g_mosq = mosquitto_new(nullptr, true, nullptr);
     if (!g_mosq) {
         std::cerr << "Failed to init Mosquitto\n";
         return 1;
