@@ -25,7 +25,7 @@ spec:
               command: ["/bin/sh", "-c"]
               args:
                 - |
-                  CURRENT=$(wget -qO- http://model-server.fire-detection.svc:8000/version)
+                  CURRENT=$(wget -qO- http://model-server.default.svc:8000/version)
                   STORED=$(kubectl get cm model-version -n fire-detection \
                     -o jsonpath='{.data.version}' 2>/dev/null || echo "none")
                   if [ "$CURRENT" != "$STORED" ]; then

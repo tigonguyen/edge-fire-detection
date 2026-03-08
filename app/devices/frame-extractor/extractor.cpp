@@ -10,7 +10,7 @@
  *   6. Publishes heartbeat to: wildfire/heartbeat (for Grafana UI)
  *
  * Environment variables:
- *   MQTT_HOST      (default: mqtt-broker.fire-detection.svc)
+ *   MQTT_HOST      (default: mqtt-broker.default.svc)
  *   MQTT_PORT      (default: 1883)
  *   FRAME_INTERVAL (default: 2.0 seconds)
  *   SOURCES_JSON   (default: /config/sources.json)
@@ -65,7 +65,7 @@ static void load_config() {
         const char* v = std::getenv(k);
         return v ? v : d;
     };
-    g_mqtt_host          = env("MQTT_HOST", "mqtt-broker.fire-detection.svc");
+    g_mqtt_host          = env("MQTT_HOST", "mqtt-broker.default.svc");
     g_mqtt_port          = std::stoi(env("MQTT_PORT", "1883"));
     g_frame_interval     = std::stod(env("FRAME_INTERVAL", "2.0"));
     g_sources_json       = env("SOURCES_JSON", "/config/sources.json");

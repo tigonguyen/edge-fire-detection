@@ -17,18 +17,20 @@ spec:
         app: mqtt-broker
         tier: edge
     spec:
-      nodeSelector:
-        node-role: edge
       containers:
         - name: mosquitto
-          image: eclipse-mosquitto:2
+          image: edge-mqtt-broker:latest
+          imagePullPolicy: Never
           ports:
             - containerPort: 1883
               name: mqtt
+            - containerPort: 9001
+              name: websockets
           volumeMounts:
-            - name: config
-              mountPath: /mosquitto/config/mosquitto.conf
-              subPath: mosquitto.conf
+            - name: mosquitto-data
+              mountPath: /mosquitto/data
+            - name: mosquitto-log
+              mountPath: /mosquitto/log
           resources:
             limits:
               memory: 128Mi
@@ -37,17 +39,7 @@ spec:
               memory: 64Mi
               cpu: 50m
       volumes:
-        - name: config
-          configMap:
-            name: mqtt-config
----
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: mqtt-config
-  namespace: default
-data:
-  mosquitto.conf: |
-    listener 1883
-    allow_anonymous true
-    max_message_size 1048576
+        - name: mosquitto-data
+          emptyDir: {}
+        - name: mosquitto-log
+          emptyDir: {}

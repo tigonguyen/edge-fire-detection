@@ -23,7 +23,7 @@ spec:
           imagePullPolicy: Never
           env:
             - name: MQTT_HOST
-              value: mqtt-broker.fire-detection.svc
+              value: mqtt-broker.default.svc
             - name: FRAME_INTERVAL
               value: "2"
             - name: SOURCES_JSON

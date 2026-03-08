@@ -31,7 +31,7 @@ spec:
             - |
               echo "Downloading model from model-server..."
               wget -O /model/fire_detection.onnx \
-                http://model-server.fire-detection.svc:8000/model
+                http://model-server.default.svc:8000/model
               echo "Model ready."
           volumeMounts:
             - name: model-vol
@@ -43,7 +43,7 @@ spec:
           imagePullPolicy: IfNotPresent
           env:
             - name: MQTT_HOST
-              value: mqtt-broker.fire-detection.svc
+              value: mqtt-broker.default.svc
             - name: MODEL_PATH
               value: /model/fire_detection.onnx
             - name: METRICS_PORT

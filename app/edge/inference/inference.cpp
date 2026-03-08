@@ -7,7 +7,7 @@
  *   3. Serves Prometheus metrics on HTTP :METRICS_PORT /metrics
  *
  * Environment variables:
- *   MQTT_HOST    (default: mqtt-broker.fire-detection.svc)
+ *   MQTT_HOST    (default: mqtt-broker.default.svc)
  *   MQTT_PORT    (default: 1883)
  *   MODEL_PATH   (default: /model/fire_detection.onnx)
  *   METRICS_PORT (default: 9090)
@@ -65,7 +65,7 @@ static void load_config() {
         const char* v = std::getenv(k);
         return v ? v : d;
     };
-    g_mqtt_host   = env("MQTT_HOST", "mqtt-broker.fire-detection.svc");
+    g_mqtt_host   = env("MQTT_HOST", "mqtt-broker.default.svc");
     g_mqtt_port   = std::stoi(env("MQTT_PORT", "1883"));
     g_model_path  = env("MODEL_PATH", "/model/fire_detection.onnx");
     g_metrics_port = std::stoi(env("METRICS_PORT", "9090"));
