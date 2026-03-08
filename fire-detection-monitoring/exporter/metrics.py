@@ -105,6 +105,22 @@ class FireDetectionMetrics:
             'Time to process fire alert'
         )
 
+        # 7. Resolved alerts counter
+        self.resolved_total = Counter(
+            'fire_resolved_total',
+            'Total number of resolved fire alerts',
+            labelnames=['resolution_type', 'resolved_by']
+        )
+
+        # 8. Resolved alerts count (current)
+        self.resolved_count_gauge = Gauge(
+            'fire_resolved_count',
+            'Number of resolved alerts'
+        )
+
+        # Track resolved count
+        self._resolved_count = 0
+
     def add_alert(self, alert: FireAlert):
         """Thêm alert mới và update metrics"""
         with self.lock:
@@ -173,8 +189,9 @@ class FireDetectionMetrics:
                 location=location
             ).set(1 if is_online else 0)
 
-    def remove_alert(self, alert_id: str):
-        """Xóa alert (khi đã acknowledge)"""
+    def remove_alert(self, alert_id: str, resolution_type: str = "resolved",
+                     resolved_by: str = "unknown"):
+        """Xóa alert (khi đã acknowledge) và track resolved"""
         with self.lock:
             if alert_id in self.active_alerts:
                 alert = self.active_alerts.pop(alert_id)
@@ -194,7 +211,21 @@ class FireDetectionMetrics:
                 except KeyError:
                     pass
 
+                # Update active alerts count
                 self.active_alerts_gauge.set(len(self.active_alerts))
+
+                # Track resolved
+                self.resolved_total.labels(
+                    resolution_type=resolution_type,
+                    resolved_by=resolved_by
+                ).inc()
+
+                self._resolved_count += 1
+                self.resolved_count_gauge.set(self._resolved_count)
+
+                print(f"Alert {alert_id} resolved: {resolution_type} by {resolved_by}")
+            else:
+                print(f"Alert {alert_id} not found in active alerts")
 
     def _cleanup_old_alerts(self):
         """Cleanup alerts cũ hơn max_history_age"""

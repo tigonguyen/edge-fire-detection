@@ -59,7 +59,8 @@ class MQTTHandler:
             # Subscribe to topics
             client.subscribe("wildfire/alerts")
             client.subscribe("wildfire/heartbeat")
-            print("Subscribed to wildfire/alerts and wildfire/heartbeat")
+            client.subscribe("wildfire/resolved")
+            print("Subscribed to wildfire/alerts, wildfire/heartbeat, wildfire/resolved")
         else:
             print(f"Failed to connect, return code: {rc}")
 
@@ -80,6 +81,8 @@ class MQTTHandler:
                 self._handle_alert(payload)
             elif topic == "wildfire/heartbeat":
                 self._handle_heartbeat(payload)
+            elif topic == "wildfire/resolved":
+                self._handle_resolved(payload)
 
         except json.JSONDecodeError as e:
             print(f"Invalid JSON in message: {e}")
@@ -111,21 +114,28 @@ class MQTTHandler:
         # Save image if included
         image_url = ""
         filepath = None
-        if payload.get('image_base64'):
+        image_base64 = payload.get('image_base64')
+        if image_base64:
+            print(f"Received image_base64: {len(image_base64)} bytes")
             try:
-                image_data = base64.b64decode(payload['image_base64'])
+                image_data = base64.b64decode(image_base64)
                 filename = f"{alert_id}.jpg"
                 filepath = os.path.join(self.images_dir, filename)
+
+                # Ensure directory exists
+                os.makedirs(self.images_dir, exist_ok=True)
 
                 with open(filepath, 'wb') as f:
                     f.write(image_data)
 
                 image_url = f"{self.image_base_url}/{filename}"
-                print(f"Saved image: {filepath}")
+                print(f"Saved image: {filepath}, URL: {image_url}")
 
             except Exception as e:
                 print(f"Failed to save image: {e}")
                 filepath = None
+        else:
+            print(f"No image_base64 in payload for alert {alert_id}")
 
         # Create FireAlert object
         alert = FireAlert(
@@ -167,9 +177,40 @@ class MQTTHandler:
             is_online=True
         )
 
+    def _handle_resolved(self, payload: dict):
+        """Process alert resolution"""
+        alert_id = payload.get('alert_id', '')
+        resolution_type = payload.get('resolution_type', 'resolved')
+        resolved_by = payload.get('resolved_by', 'unknown')
+        notes = payload.get('notes', '')
+
+        print(f"Received resolution for alert: {alert_id}")
+        print(f"  - Type: {resolution_type}")
+        print(f"  - By: {resolved_by}")
+        if notes:
+            print(f"  - Notes: {notes}")
+
+        # Remove alert from metrics (this will stop Alertmanager reminders)
+        self.metrics.remove_alert(alert_id, resolution_type, resolved_by)
+
+        # Send resolution notification
+        threading.Thread(
+            target=self._send_resolution_notification,
+            args=(alert_id, resolution_type, resolved_by, notes),
+            daemon=True
+        ).start()
+
     def _send_notification(self, alert: FireAlert, image_path: Optional[str]):
         """Send notification in background thread"""
         try:
             self.notification.send_alert(alert, image_path)
         except Exception as e:
             print(f"Failed to send notification: {e}")
+
+    def _send_resolution_notification(self, alert_id: str, resolution_type: str,
+                                       resolved_by: str, notes: str):
+        """Send resolution notification via Telegram"""
+        try:
+            self.notification.send_resolution(alert_id, resolution_type, resolved_by, notes)
+        except Exception as e:
+            print(f"Failed to send resolution notification: {e}")

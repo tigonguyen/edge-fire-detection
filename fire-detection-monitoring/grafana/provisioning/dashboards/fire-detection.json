@@ -13,8 +13,8 @@
       "title": "🔥 Fire Detection Map",
       "type": "geomap",
       "gridPos": {
-        "h": 16,
-        "w": 16,
+        "h": 14,
+        "w": 14,
         "x": 0,
         "y": 0
       },
@@ -142,12 +142,12 @@
       }
     },
     {
-      "title": "📊 Alert Statistics",
+      "title": "🔴 Active Alerts",
       "type": "stat",
       "gridPos": {
         "h": 4,
-        "w": 8,
-        "x": 16,
+        "w": 5,
+        "x": 14,
         "y": 0
       },
       "id": 2,
@@ -195,7 +195,161 @@
                 "value": 5
               }
             ]
-          }
+          },
+          "unit": "none"
+        }
+      }
+    },
+    {
+      "title": "✅ Resolved Alerts",
+      "type": "stat",
+      "gridPos": {
+        "h": 4,
+        "w": 5,
+        "x": 19,
+        "y": 0
+      },
+      "id": 8,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "expr": "fire_resolved_count",
+          "legendFormat": "Resolved",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "none"
+        }
+      }
+    },
+    {
+      "title": "📊 Total Alerts (All Time)",
+      "type": "stat",
+      "gridPos": {
+        "h": 4,
+        "w": 5,
+        "x": 14,
+        "y": 4
+      },
+      "id": 9,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "expr": "sum(fire_alerts_total)",
+          "legendFormat": "Total",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          },
+          "unit": "none"
+        }
+      }
+    },
+    {
+      "title": "📡 Online Devices",
+      "type": "stat",
+      "gridPos": {
+        "h": 4,
+        "w": 5,
+        "x": 19,
+        "y": 4
+      },
+      "id": 10,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "expr": "count(fire_device_status == 1)",
+          "legendFormat": "Online",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "none"
         }
       }
     },
@@ -204,9 +358,9 @@
       "type": "timeseries",
       "gridPos": {
         "h": 6,
-        "w": 8,
-        "x": 16,
-        "y": 4
+        "w": 10,
+        "x": 14,
+        "y": 8
       },
       "id": 3,
       "datasource": {
@@ -215,9 +369,14 @@
       },
       "targets": [
         {
-          "expr": "increase(fire_alerts_total[1h])",
-          "legendFormat": "{{ device_id }}",
+          "expr": "increase(fire_alerts_total[10m])",
+          "legendFormat": "New Alerts",
           "refId": "A"
+        },
+        {
+          "expr": "increase(fire_resolved_total[10m])",
+          "legendFormat": "Resolved",
+          "refId": "B"
         }
       ],
       "options": {
@@ -245,13 +404,13 @@
       }
     },
     {
-      "title": "🔴 Recent Alerts",
+      "title": "🔴 Active Alerts Table",
       "type": "table",
       "gridPos": {
-        "h": 6,
-        "w": 8,
-        "x": 16,
-        "y": 10
+        "h": 8,
+        "w": 14,
+        "x": 0,
+        "y": 14
       },
       "id": 4,
       "datasource": {
@@ -276,11 +435,21 @@
               "instance": true,
               "job": true
             },
+            "indexByName": {
+              "alert_id": 0,
+              "location": 1,
+              "Value": 2,
+              "class": 3,
+              "device_id": 4,
+              "detected_at": 5,
+              "image_url": 6
+            },
             "renameByName": {
               "Value": "Confidence",
               "alert_id": "Alert ID",
               "device_id": "Device",
               "location": "Location",
+              "class": "Type",
               "detected_at": "Time",
               "image_url": "Image"
             }
@@ -289,7 +458,12 @@
       ],
       "options": {
         "showHeader": true,
-        "cellHeight": "sm"
+        "cellHeight": "sm",
+        "footer": {
+          "show": true,
+          "reducer": ["count"],
+          "countRows": true
+        }
       },
       "fieldConfig": {
         "defaults": {
@@ -353,18 +527,158 @@
                 ]
               }
             ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Type"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "fire": {
+                        "text": "🔥 Fire",
+                        "color": "red"
+                      },
+                      "smoke": {
+                        "text": "💨 Smoke",
+                        "color": "orange"
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
           }
         ]
       }
     },
     {
-      "title": "📡 Device Status",
+      "title": "✅ Resolved by Type",
+      "type": "piechart",
+      "gridPos": {
+        "h": 8,
+        "w": 5,
+        "x": 14,
+        "y": 14
+      },
+      "id": 11,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "expr": "sum by (resolution_type) (fire_resolved_total)",
+          "legendFormat": "{{ resolution_type }}",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "values": ["value", "percent"]
+        },
+        "pieType": "donut"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "extinguished"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "green",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "false_positive"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "yellow",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "contained"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "blue",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "title": "🔥 Alerts by Device",
+      "type": "piechart",
+      "gridPos": {
+        "h": 8,
+        "w": 5,
+        "x": 19,
+        "y": 14
+      },
+      "id": 7,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "expr": "sum by (device_id) (fire_alerts_total)",
+          "legendFormat": "{{ device_id }}",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "values": ["value"]
+        },
+        "pieType": "donut"
+      }
+    },
+    {
+      "title": "📡 Device Status Map",
       "type": "geomap",
       "gridPos": {
         "h": 8,
         "w": 8,
         "x": 0,
-        "y": 16
+        "y": 22
       },
       "id": 5,
       "datasource": {
@@ -434,7 +748,7 @@
         "h": 8,
         "w": 8,
         "x": 8,
-        "y": 16
+        "y": 22
       },
       "id": 6,
       "datasource": {
@@ -450,31 +764,46 @@
       ]
     },
     {
-      "title": "🔥 Total Alerts by Device",
-      "type": "piechart",
+      "title": "🔥 Alerts by Location",
+      "type": "barchart",
       "gridPos": {
         "h": 8,
         "w": 8,
         "x": 16,
-        "y": 16
+        "y": 22
       },
-      "id": 7,
+      "id": 12,
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
       },
       "targets": [
         {
-          "expr": "sum by (device_id) (fire_alerts_total)",
-          "legendFormat": "{{ device_id }}",
+          "expr": "sum by (location) (fire_alerts_total)",
+          "legendFormat": "{{ location }}",
           "refId": "A"
         }
-      ]
+      ],
+      "options": {
+        "orientation": "horizontal",
+        "xTickLabelRotation": 0,
+        "showValue": "auto",
+        "stacking": "none",
+        "groupWidth": 0.7,
+        "barWidth": 0.9
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          }
+        }
+      }
     }
   ],
   "refresh": "10s",
   "schemaVersion": 38,
-  "tags": ["fire-detection", "geomap"],
+  "tags": ["fire-detection", "geomap", "vietnam"],
   "templating": {
     "list": [
       {
@@ -485,6 +814,17 @@
           "uid": "prometheus"
         },
         "query": "label_values(fire_alert_info, device_id)",
+        "includeAll": true,
+        "multi": true
+      },
+      {
+        "name": "region",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "query": "label_values(fire_alert_info, location)",
         "includeAll": true,
         "multi": true
       }
@@ -498,5 +838,5 @@
   "timezone": "",
   "title": "Fire Detection Dashboard",
   "uid": "fire-detection-main",
-  "version": 1
+  "version": 2
 }
