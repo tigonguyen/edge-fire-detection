@@ -1,0 +1,74 @@
+# alertmanager/alertmanager.yml
+global:
+  resolve_timeout: 5m
+  telegram_api_url: "https://api.telegram.org"
+
+route:
+  group_by: ['alertname', 'device_id']
+  group_wait: 10s
+  group_interval: 5m
+  repeat_interval: 1h
+  receiver: 'telegram-notifications'
+
+  routes:
+    # Critical alerts - immediate notification
+    - match:
+        severity: critical
+      receiver: 'telegram-critical'
+      group_wait: 0s
+      repeat_interval: 15m
+
+    # Warning alerts
+    - match:
+        severity: warning
+      receiver: 'telegram-notifications'
+      group_wait: 30s
+
+receivers:
+  - name: 'telegram-critical'
+    telegram_configs:
+      - bot_token: '${TELEGRAM_BOT_TOKEN}'
+        chat_id: ${TELEGRAM_CHAT_ID}
+        parse_mode: 'HTML'
+        message: |
+          🔥🔥🔥 <b>CRITICAL FIRE ALERT!</b> 🔥🔥🔥
+
+          <b>Alert:</b> {{ .GroupLabels.alertname }}
+          <b>Status:</b> {{ .Status | toUpper }}
+
+          {{ range .Alerts }}
+          ━━━━━━━━━━━━━━━━━━━━━━
+          📍 <b>Location:</b> {{ .Labels.location }}
+          🌍 <b>Coordinates:</b> {{ .Labels.latitude }}, {{ .Labels.longitude }}
+          📊 <b>Confidence:</b> {{ .Annotations.confidence }}
+          📡 <b>Device:</b> {{ .Labels.device_id }}
+          ⏰ <b>Time:</b> {{ .StartsAt.Format "2006-01-02 15:04:05" }}
+
+          🖼 <a href="{{ .Labels.image_url }}">View Image</a>
+          🗺 <a href="https://maps.google.com/?q={{ .Labels.latitude }},{{ .Labels.longitude }}">View on Map</a>
+          {{ end }}
+
+          ⚠️ <b>Immediate action required!</b>
+
+  - name: 'telegram-notifications'
+    telegram_configs:
+      - bot_token: '${TELEGRAM_BOT_TOKEN}'
+        chat_id: ${TELEGRAM_CHAT_ID}
+        parse_mode: 'HTML'
+        message: |
+          🚨 <b>Fire Detection Alert</b>
+
+          <b>Alert:</b> {{ .GroupLabels.alertname }}
+          <b>Status:</b> {{ .Status }}
+
+          {{ range .Alerts }}
+          • {{ .Labels.location }}: {{ .Annotations.summary }}
+          {{ end }}
+
+# Inhibit rules
+inhibit_rules:
+  - source_match:
+      severity: 'critical'
+    target_match:
+      severity: 'warning'
+    equal: ['alertname', 'device_id']
