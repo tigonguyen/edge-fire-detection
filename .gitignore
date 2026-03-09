@@ -20,9 +20,10 @@ model/data/
 *.wmv
 video_frames/
 video_frames_*/
+experiments/knowledge_distillation/models/*
 
 # Model checkpoints and weights
-*.pth
+# *.pth
 *.pt
 *.ckpt
 *.h5
