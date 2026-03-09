@@ -119,6 +119,9 @@ static bool download_file(const std::string& url, const std::string& out_path) {
     
     // Ignore SSL varification for simplicity if needed (or keep strict based on environment)
     curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
+    
+    // Force IPv4 Resolution to bypass Alpine musl IPv6 DNS bugs
+    curl_easy_setopt(curl, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V4);
 
     CURLcode res = curl_easy_perform(curl);
     

@@ -1,29 +1,26 @@
 # ── Stage 1: Build ────────────────────────────────────────────────────
-FROM alpine:3.19 AS builder
+FROM debian:bookworm-slim AS builder
 
-# Install build dependencies
-RUN apk add --no-cache \
-    build-base cmake \
-    opencv-dev mosquitto-dev nlohmann-json curl-dev
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential cmake wget ca-certificates \
+    libopencv-dev libmosquitto-dev nlohmann-json3-dev libcurl4-openssl-dev
 
-# Build C++ Extractor
 WORKDIR /build
 COPY CMakeLists.txt extractor.cpp ./
+# Build C++ Extractor
 RUN mkdir out && cd out \
     && cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/app .. \
     && make -j$(nproc) \
     && make install \
     && strip /app/bin/fire_frame_extractor
 
-# ── Stage 2: Runtime (tiny) ──────────────────────────────────────────
-FROM alpine:3.19
+# ── Stage 2: Runtime ──────────────────────────────────────────────────
+FROM debian:bookworm-slim
 
-# Alpine's opencv package is highly optimized and strips out 
-# huge GUI/X11/Audio bloat compared to Debian's libopencv
-RUN apk add --no-cache \
-    opencv \
-    mosquitto-libs \
-    curl
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libopencv-core406t64 libopencv-imgproc406t64 libopencv-videoio406t64 \
+    libmosquitto1 libcurl4 ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /app/bin/fire_frame_extractor /usr/local/bin/
 

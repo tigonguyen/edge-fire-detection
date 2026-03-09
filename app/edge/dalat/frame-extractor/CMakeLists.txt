@@ -5,18 +5,14 @@ set(CMAKE_CXX_STANDARD 17)
 
 # Find Packages
 find_package(OpenCV REQUIRED core imgproc videoio)
+find_package(CURL REQUIRED)
 
-# nlohmann-json (if installed as CMake target)
+# Header boundaries
 find_path(NLOHMANN_JSON_INCLUDE nlohmann/json.hpp)
-
-# Mosquitto
 find_path(MOSQ_INCLUDE mosquitto.h)
 find_library(MOSQ_LIB mosquitto)
 
-# Curl
-find_package(CURL REQUIRED)
-
-if(NOT MOSQ_INCLUDE OR NOT MOSQ_LIB)
+if(NOT MOSQ_LIB)
   message(FATAL_ERROR "libmosquitto not found.")
 endif()
 
