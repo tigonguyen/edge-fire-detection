@@ -20,6 +20,8 @@ spec:
         tier: devices
         location: binhphuoc
     spec:
+      nodeSelector:
+        region: binhphuoc
       containers:
         - name: extractor
           image: fire-frame-extractor:latest

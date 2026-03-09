@@ -23,6 +23,8 @@ spec:
         prometheus.io/port: "9090"
     spec:
 
+      nodeSelector:
+        region: binhphuoc
       initContainers:
         - name: model-init
           image: busybox:1.36

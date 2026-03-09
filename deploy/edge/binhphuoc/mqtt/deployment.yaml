@@ -1,12 +1,12 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: mqtt-broker-dalat
+  name: mqtt-broker-binhphuoc
   namespace: default
   labels:
     app: mqtt-broker
     tier: edge
-    location: dalat
+    location: binhphuoc
 spec:
   replicas: 1
   selector:
@@ -17,14 +17,12 @@ spec:
       labels:
         app: mqtt-broker
         tier: edge
-        location: dalat
+        location: binhphuoc
     spec:
-      nodeSelector:
-        region: dalat
       containers:
         - name: mosquitto
-          image: edge-mqtt-broker:latest
-          imagePullPolicy: Never
+          image: eclipse-mosquitto:2
+          imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 1883
               name: mqtt

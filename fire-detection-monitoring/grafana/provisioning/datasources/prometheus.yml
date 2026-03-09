@@ -7,7 +7,7 @@ datasources:
     type: prometheus
     uid: prometheus
     access: proxy
-    url: http://fire-prometheus:9090
+    url: http://prometheus.default.svc:9090
     isDefault: true
     editable: false
 
@@ -15,6 +15,6 @@ datasources:
     type: alertmanager
     uid: alertmanager
     access: proxy
-    url: http://fire-alertmanager:9093
+    url: http://alertmanager.default.svc:9093
     jsonData:
       implementation: prometheus

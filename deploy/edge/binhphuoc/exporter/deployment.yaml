@@ -1,0 +1,74 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: exporter-binhphuoc
+  namespace: default
+  labels:
+    app: exporter-binhphuoc
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: exporter-binhphuoc
+  template:
+    metadata:
+      labels:
+        app: exporter-binhphuoc
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8000"
+    spec:
+      containers:
+      - name: exporter
+        image: fire-exporter:latest
+        imagePullPolicy: Never
+        env:
+        - name: MQTT_BROKER
+          value: "mqtt-broker-binhphuoc.default.svc"
+        - name: MQTT_PORT
+          value: "1883"
+        - name: PYTHONUNBUFFERED
+          value: "1"
+        - name: SIMULATE_FIRE
+          value: "true"
+        # Dummy values to prevent crashes if Telegram alerts are enabled in the Python code
+        - name: TELEGRAM_BOT_TOKEN
+          value: "8696341608:AAFc0dNq_FDS-_7IeyZA8x8UIollLf0tugw"
+        - name: TELEGRAM_CHAT_ID
+          value: "-5164746257"
+        # Grafana will load the images from this cluster IP domain
+        - name: IMAGE_BASE_URL
+          value: "http://exporter-binhphuoc.default.svc:8080/images"
+        ports:
+        - containerPort: 8000
+        volumeMounts:
+        - name: images-volume
+          mountPath: /app/images
+      - name: nginx
+        image: fire-nginx:latest
+        imagePullPolicy: Never
+        ports:
+        - containerPort: 80
+        volumeMounts:
+        - name: images-volume
+          mountPath: /usr/share/nginx/html/images
+      volumes:
+      - name: images-volume
+        emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: exporter-binhphuoc
+  namespace: default
+spec:
+  type: ClusterIP
+  selector:
+    app: exporter-binhphuoc
+  ports:
+  - name: metrics
+    port: 8000
+    targetPort: 8000
+  - name: images
+    port: 8080
+    targetPort: 80

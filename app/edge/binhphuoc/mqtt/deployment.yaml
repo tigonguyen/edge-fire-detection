@@ -19,6 +19,8 @@ spec:
         tier: edge
         location: binhphuoc
     spec:
+      nodeSelector:
+        region: binhphuoc
       containers:
         - name: mosquitto
           image: edge-mqtt-broker:latest

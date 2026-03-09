@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: inference-dalat
+  namespace: default
+  labels:
+    app: inference
+    tier: edge
+spec:
+  selector:
+    app: inference
+    location: dalat
+  ports:
+    - port: 9090
+      targetPort: 9090
+      name: metrics

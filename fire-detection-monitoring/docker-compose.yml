@@ -32,11 +32,12 @@ services:
       - SIMULATE_FIRE=${SIMULATE_FIRE:-false}
       - SIMULATE_SMOKE=${SIMULATE_SMOKE:-false}
       # Path to AI model (future use)
-      - FIRE_MODEL_PATH=${FIRE_MODEL_PATH:-}
+      - FIRE_MODEL_PATH=${FIRE_MODEL_PATH:-/app/model/fire_detection.onnx}
       # Alert cooldown in seconds (prevent spam from same device+location)
       - ALERT_COOLDOWN_SECONDS=${ALERT_COOLDOWN_SECONDS:-300}
     volumes:
       - ./images:/app/images
+      - ./model:/app/model
     depends_on:
       - mosquitto
     restart: unless-stopped

@@ -18,7 +18,7 @@ RUN mkdir out && cd out \
 FROM debian:bookworm-slim
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    libopencv-core406 libopencv-imgproc406 libopencv-videoio406 \
+    libopencv-core406t64 libopencv-imgproc406t64 libopencv-videoio406t64 \
     libmosquitto1 libcurl4 ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
