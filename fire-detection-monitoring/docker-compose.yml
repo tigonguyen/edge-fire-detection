@@ -27,6 +27,14 @@ services:
       - IMAGES_DIR=/app/images
       - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
       - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID}
+      # Fire detection simulation (set to "true" to always detect fire/smoke)
+      # Use for testing before AI model is ready
+      - SIMULATE_FIRE=${SIMULATE_FIRE:-false}
+      - SIMULATE_SMOKE=${SIMULATE_SMOKE:-false}
+      # Path to AI model (future use)
+      - FIRE_MODEL_PATH=${FIRE_MODEL_PATH:-}
+      # Alert cooldown in seconds (prevent spam from same device+location)
+      - ALERT_COOLDOWN_SECONDS=${ALERT_COOLDOWN_SECONDS:-300}
     volumes:
       - ./images:/app/images
     depends_on:

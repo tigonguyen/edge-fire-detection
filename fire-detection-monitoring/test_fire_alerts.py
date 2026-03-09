@@ -8,9 +8,19 @@ import random
 import os
 import argparse
 import base64
+import io
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional
+
+# Optional: OpenCV for video processing
+try:
+    import cv2
+    CV2_AVAILABLE = True
+except ImportError:
+    CV2_AVAILABLE = False
+    print("[WARNING] OpenCV not installed. Video streaming features disabled.")
+    print("         Install with: pip install opencv-python")
 
 MQTT_BROKER = os.getenv("MQTT_BROKER", "localhost")
 MQTT_PORT = int(os.getenv("MQTT_PORT", "1883"))
@@ -329,6 +339,296 @@ def test_all_regions():
     return alerts
 
 
+def send_image_for_detection(device_id: str = None, location: dict = None, image_type: str = "fire"):
+    """
+    Send image to exporter for AI fire detection.
+
+    This is the new flow for edge devices:
+    1. Device captures image
+    2. Device sends image to wildfire/images topic
+    3. Exporter runs AI model to detect fire/smoke
+    4. If detected, exporter creates alert automatically
+
+    Args:
+        device_id: Edge device identifier
+        location: Location dict with lat, lon, name
+        image_type: Type of test image to use ("fire", "smoke", "general")
+    """
+    client = mqtt.Client(CallbackAPIVersion.VERSION2)
+    client.connect(MQTT_BROKER, MQTT_PORT)
+
+    if device_id is None:
+        device_id = f"edge_device_{random.randint(1, 10):03d}"
+
+    if location is None:
+        location = random.choice(VIETNAM_FOREST_LOCATIONS)
+
+    # Get test image
+    image_base64 = get_image_base64(image_type)
+
+    payload = {
+        "device_id": device_id,
+        "timestamp": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "location": {
+            "lat": location["lat"],
+            "lon": location["lon"],
+            "name": location["name"],
+        },
+    }
+
+    if image_base64:
+        payload["image_base64"] = image_base64
+        print(f"  [IMAGE] Attached ({len(image_base64)} chars)")
+    else:
+        print(f"  [WARNING] No test image available")
+
+    payload_json = json.dumps(payload)
+    print(f"  [PAYLOAD] Size: {len(payload_json)} bytes")
+
+    # Publish to images topic (exporter will run AI detection)
+    client.publish("wildfire/images", payload_json)
+    client.disconnect()
+
+    print(f"[IMAGE SENT] Sent image for AI detection:")
+    print(f"  - Device ID: {device_id}")
+    print(f"  - Location: {location['name']}")
+    print(f"  - Coordinates: {location['lat']}, {location['lon']}")
+    print(f"  - Image type: {image_type}")
+    print(f"  [NOTE] If exporter has SIMULATE_FIRE=true, an alert will be created")
+
+    return payload
+
+
+def test_image_detection(region=None, image_type="fire"):
+    """
+    Test the new image detection flow.
+
+    Device sends image -> Exporter runs AI -> Alert created if fire detected
+    """
+    print("\n" + "="*50)
+    print("TEST: Image Detection Flow (New)")
+    print("="*50)
+    print("[INFO] This tests the new flow where device sends image")
+    print("[INFO] and exporter runs AI model to detect fire/smoke")
+    print("[INFO] Set SIMULATE_FIRE=true on exporter to trigger alerts")
+
+    if region:
+        locations = [loc for loc in VIETNAM_FOREST_LOCATIONS if loc.get("region") == region]
+        location = random.choice(locations) if locations else random.choice(VIETNAM_FOREST_LOCATIONS)
+    else:
+        location = random.choice(VIETNAM_FOREST_LOCATIONS)
+
+    return send_image_for_detection(location=location, image_type=image_type)
+
+
+def send_video_frame(frame_data: bytes, device_id: str, location: dict, frame_number: int):
+    """
+    Send a single video frame to broker for AI detection.
+
+    Args:
+        frame_data: JPEG encoded frame bytes
+        device_id: Edge device / drone identifier
+        location: Location dict with lat, lon, name
+        frame_number: Frame sequence number
+    """
+    client = mqtt.Client(CallbackAPIVersion.VERSION2)
+    client.connect(MQTT_BROKER, MQTT_PORT)
+
+    image_base64 = base64.b64encode(frame_data).decode("utf-8")
+
+    payload = {
+        "device_id": device_id,
+        "timestamp": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "location": {
+            "lat": location["lat"],
+            "lon": location["lon"],
+            "name": location["name"],
+        },
+        "frame_number": frame_number,
+        "image_base64": image_base64
+    }
+
+    payload_json = json.dumps(payload)
+
+    # Publish to images topic
+    client.publish("wildfire/images", payload_json)
+    client.disconnect()
+
+    return len(payload_json)
+
+
+def test_video_stream(
+    video_path: str,
+    device_id: str = None,
+    region: str = None,
+    interval: float = 2.0,
+    max_frames: int = 0,
+    start_frame: int = 0,
+    jpeg_quality: int = 85
+):
+    """
+    Stream frames from a video file to simulate drone patrol.
+
+    This simulates a drone capturing video and periodically sending
+    frames to the broker for fire detection analysis.
+
+    Args:
+        video_path: Path to video file (mp4, avi, etc.)
+        device_id: Drone/device identifier
+        region: Vietnam region for location simulation
+        interval: Seconds between frame captures (default: 2.0)
+        max_frames: Maximum frames to send (0 = unlimited)
+        start_frame: Start from this frame number
+        jpeg_quality: JPEG compression quality (1-100)
+    """
+    print("\n" + "="*60)
+    print("TEST: Video Stream (Drone Patrol Simulation)")
+    print("="*60)
+
+    if not CV2_AVAILABLE:
+        print("[ERROR] OpenCV is required for video streaming")
+        print("        Install with: pip install opencv-python")
+        return None
+
+    # Validate video file
+    video_path = Path(video_path)
+    if not video_path.exists():
+        print(f"[ERROR] Video file not found: {video_path}")
+        return None
+
+    # Open video
+    cap = cv2.VideoCapture(str(video_path))
+    if not cap.isOpened():
+        print(f"[ERROR] Cannot open video: {video_path}")
+        return None
+
+    # Get video info
+    total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+    fps = cap.get(cv2.CAP_PROP_FPS)
+    width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    duration = total_frames / fps if fps > 0 else 0
+
+    print(f"[VIDEO] {video_path.name}")
+    print(f"  - Resolution: {width}x{height}")
+    print(f"  - FPS: {fps:.2f}")
+    print(f"  - Total frames: {total_frames}")
+    print(f"  - Duration: {duration:.1f}s")
+    print(f"  - Capture interval: {interval}s")
+    print(f"  - JPEG quality: {jpeg_quality}")
+
+    # Setup device
+    if device_id is None:
+        device_id = f"drone_{random.randint(1, 99):02d}"
+
+    # Setup location (single location for entire video - drone patrols one forest area)
+    if region:
+        locations = [loc for loc in VIETNAM_FOREST_LOCATIONS if loc.get("region") == region]
+    else:
+        locations = VIETNAM_FOREST_LOCATIONS
+
+    if not locations:
+        locations = VIETNAM_FOREST_LOCATIONS
+
+    # Pick one random location for the entire video
+    location = random.choice(locations)
+
+    print(f"[DRONE] Device ID: {device_id}")
+    print(f"[DRONE] Patrol location: {location['name']}")
+
+    # Skip to start frame
+    if start_frame > 0:
+        cap.set(cv2.CAP_PROP_POS_FRAMES, start_frame)
+        print(f"[VIDEO] Starting from frame {start_frame}")
+
+    print("\n[STREAMING] Press Ctrl+C to stop\n")
+    print("-" * 60)
+
+    frames_sent = 0
+    frame_number = start_frame
+    total_bytes = 0
+    start_time = time.time()
+
+    try:
+        while True:
+            ret, frame = cap.read()
+            if not ret:
+                print("\n[VIDEO] End of video reached")
+                break
+
+            frame_number += 1
+
+            # Calculate frames to skip based on interval and FPS
+            # We want to capture 1 frame every `interval` seconds
+            frames_to_skip = int(fps * interval) - 1 if fps > 0 else 0
+
+            # Skip frames to match interval
+            for _ in range(frames_to_skip):
+                ret, _ = cap.read()
+                if not ret:
+                    break
+                frame_number += 1
+
+            if not ret:
+                print("\n[VIDEO] End of video reached")
+                break
+
+            # Encode frame as JPEG
+            encode_params = [cv2.IMWRITE_JPEG_QUALITY, jpeg_quality]
+            _, jpeg_data = cv2.imencode('.jpg', frame, encode_params)
+            frame_bytes = jpeg_data.tobytes()
+
+            # Send frame (using single location for entire video)
+            payload_size = send_video_frame(
+                frame_data=frame_bytes,
+                device_id=device_id,
+                location=location,
+                frame_number=frame_number
+            )
+
+            frames_sent += 1
+            total_bytes += payload_size
+
+            # Progress
+            video_time = frame_number / fps if fps > 0 else 0
+            print(f"[FRAME {frames_sent:4d}] Video: {video_time:6.1f}s | "
+                  f"Frame: {frame_number:6d}/{total_frames} | "
+                  f"Size: {len(frame_bytes)/1024:5.1f}KB | "
+                  f"Location: {location['name'][:30]}...")
+
+            # Check max frames limit
+            if max_frames > 0 and frames_sent >= max_frames:
+                print(f"\n[INFO] Reached max frames limit: {max_frames}")
+                break
+
+            # Wait for next capture
+            time.sleep(interval)
+
+    except KeyboardInterrupt:
+        print("\n\n[STOPPED] Stream interrupted by user")
+
+    finally:
+        cap.release()
+
+    # Summary
+    elapsed = time.time() - start_time
+    print("\n" + "-" * 60)
+    print("[SUMMARY]")
+    print(f"  - Frames sent: {frames_sent}")
+    print(f"  - Total data: {total_bytes / 1024 / 1024:.2f} MB")
+    print(f"  - Elapsed time: {elapsed:.1f}s")
+    print(f"  - Average rate: {frames_sent / elapsed:.2f} frames/sec" if elapsed > 0 else "")
+    print(f"  - Device ID: {device_id}")
+    print("\n[NOTE] If exporter has SIMULATE_FIRE=true, alerts will be created")
+
+    return {
+        "frames_sent": frames_sent,
+        "total_bytes": total_bytes,
+        "elapsed": elapsed,
+        "device_id": device_id
+    }
+
+
 def send_device_status(device_id: str = None, status: str = "online", location: dict = None):
     """Send device status/heartbeat via MQTT"""
     client = mqtt.Client(CallbackAPIVersion.VERSION2)
@@ -452,8 +752,8 @@ def main():
     parser.add_argument("--test", "-t", type=str, default="single",
                        choices=["single", "smoke", "resolve", "false_positive",
                                "contained", "multi_region", "all_regions",
-                               "device_status", "resolved", "full"],
-                       help="Test case to run")
+                               "device_status", "resolved", "image", "video", "full"],
+                       help="Test case to run (use 'image' for single image, 'video' for video stream)")
     parser.add_argument("--region", "-r", type=str, default=None,
                        choices=["north", "central", "south"],
                        help="Region filter for alerts")
@@ -468,6 +768,21 @@ def main():
     parser.add_argument("--resolution", type=str, default="extinguished",
                        choices=["extinguished", "false_positive", "contained"],
                        help="Resolution type for resolved test")
+    parser.add_argument("--image-type", type=str, default="fire",
+                       choices=["fire", "smoke", "general"],
+                       help="Image type for image detection test")
+
+    # Video streaming options
+    parser.add_argument("--video", type=str, default=None,
+                       help="Path to video file for video stream test")
+    parser.add_argument("--interval", type=float, default=2.0,
+                       help="Seconds between frame captures (default: 2.0)")
+    parser.add_argument("--max-frames", type=int, default=0,
+                       help="Maximum frames to send (0 = unlimited)")
+    parser.add_argument("--start-frame", type=int, default=0,
+                       help="Start from this frame number")
+    parser.add_argument("--jpeg-quality", type=int, default=85,
+                       help="JPEG compression quality 1-100 (default: 85)")
 
     args = parser.parse_args()
 
@@ -494,6 +809,22 @@ def main():
         test_device_status(device_id=args.device, count=args.count)
     elif args.test == "resolved":
         test_resolved_standalone(alert_id=args.alert_id, resolution_type=args.resolution)
+    elif args.test == "image":
+        test_image_detection(region=args.region, image_type=args.image_type)
+    elif args.test == "video":
+        if not args.video:
+            print("[ERROR] --video path is required for video test")
+            print("Example: python test_fire_alerts.py --test video --video patrol.mp4")
+            return
+        test_video_stream(
+            video_path=args.video,
+            device_id=args.device,
+            region=args.region,
+            interval=args.interval,
+            max_frames=args.max_frames,
+            start_frame=args.start_frame,
+            jpeg_quality=args.jpeg_quality
+        )
     elif args.test == "full":
         print("\n>>> Running all test cases <<<\n")
         test_single_fire_alert()

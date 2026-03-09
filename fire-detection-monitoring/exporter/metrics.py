@@ -241,6 +241,60 @@ class FireDetectionMetrics:
 
             print(f"Updated device status: {device_id} (online={is_online}, battery={battery}%, temp={temperature}°C)")
 
+    def update_alert_confidence(self, alert_id: str, new_confidence: float,
+                                 new_image_url: str = None):
+        """Update confidence of an existing alert (when higher confidence is detected during cooldown)"""
+        with self.lock:
+            if alert_id not in self.active_alerts:
+                print(f"[METRICS] Alert {alert_id} not found for confidence update")
+                return False
+
+            alert = self.active_alerts[alert_id]
+            old_confidence = alert.confidence
+
+            # Remove old metric first
+            try:
+                self.fire_alert_gauge.remove(
+                    alert.alert_id,
+                    alert.device_id,
+                    str(alert.latitude),
+                    str(alert.longitude),
+                    alert.location,
+                    alert.detection_class,
+                    alert.detected_at,
+                    alert.image_url
+                )
+            except KeyError:
+                pass
+
+            # Update alert
+            alert.confidence = new_confidence
+            if new_image_url:
+                alert.image_url = new_image_url
+
+            # Re-add with new confidence
+            self.fire_alert_gauge.labels(
+                alert_id=alert.alert_id,
+                device_id=alert.device_id,
+                latitude=str(alert.latitude),
+                longitude=str(alert.longitude),
+                location=alert.location,
+                detected_at=alert.detected_at,
+                image_url=alert.image_url,
+                **{'class': alert.detection_class}
+            ).set(alert.confidence)
+
+            # Update confidence gauge
+            self.confidence_gauge.labels(
+                device_id=alert.device_id,
+                latitude=str(alert.latitude),
+                longitude=str(alert.longitude),
+                location=alert.location
+            ).set(alert.confidence)
+
+            print(f"[METRICS] Updated alert {alert_id} confidence: {old_confidence:.2f} -> {new_confidence:.2f}")
+            return True
+
     def remove_alert(self, alert_id: str, resolution_type: str = "resolved",
                      resolved_by: str = "unknown"):
         """Xóa alert (khi đã acknowledge) và track resolved"""

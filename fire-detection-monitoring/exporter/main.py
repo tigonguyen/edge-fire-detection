@@ -20,11 +20,28 @@ async def lifespan(app: FastAPI):
     # Startup
     print("Starting Fire Detection Exporter...")
 
+    # Fire detection simulation flags (for testing without real AI model)
+    # Set SIMULATE_FIRE=true to always detect fire when receiving images
+    # Set SIMULATE_SMOKE=true to always detect smoke when receiving images
+    simulate_fire = os.getenv('SIMULATE_FIRE', 'false').lower() == 'true'
+    simulate_smoke = os.getenv('SIMULATE_SMOKE', 'false').lower() == 'true'
+    model_path = os.getenv('FIRE_MODEL_PATH', None)
+    alert_cooldown = int(os.getenv('ALERT_COOLDOWN_SECONDS', '300'))  # 5 minutes default
+
+    if simulate_fire or simulate_smoke:
+        print(f"[WARNING] Running in SIMULATION mode: fire={simulate_fire}, smoke={simulate_smoke}")
+
+    print(f"[CONFIG] Alert cooldown: {alert_cooldown} seconds")
+
     mqtt_handler = MQTTHandler(
         broker=os.getenv('MQTT_BROKER', 'localhost'),
         port=int(os.getenv('MQTT_PORT', 1883)),
         images_dir=os.getenv('IMAGES_DIR', './images'),
-        image_base_url=os.getenv('IMAGE_BASE_URL', 'http://localhost:8080/images')
+        image_base_url=os.getenv('IMAGE_BASE_URL', 'http://localhost:8080/images'),
+        simulate_fire=simulate_fire,
+        simulate_smoke=simulate_smoke,
+        model_path=model_path,
+        alert_cooldown_seconds=alert_cooldown
     )
     mqtt_handler.connect()
 
@@ -92,6 +109,26 @@ async def get_alerts():
             for a in alerts
         ]
     }
+
+@app.get("/scan-history")
+async def get_scan_history(limit: int = 100, detected_only: bool = False):
+    """
+    Get scan history for debugging.
+    All scanned images are saved and logged, regardless of detection result.
+
+    Query params:
+    - limit: max number of records to return (default 100)
+    - detected_only: if true, only return records where fire/smoke was detected
+    """
+    if not mqtt_handler:
+        return {"count": 0, "scans": []}
+
+    scans = mqtt_handler.get_scan_history(limit=limit, detected_only=detected_only)
+    return {
+        "count": len(scans),
+        "scans": scans
+    }
+
 
 # For testing: Simulate an alert
 @app.post("/test-alert")
