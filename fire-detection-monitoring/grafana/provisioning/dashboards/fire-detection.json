@@ -545,6 +545,14 @@
                 "value": "percentunit"
               },
               {
+                "id": "min",
+                "value": 0
+              },
+              {
+                "id": "max",
+                "value": 1
+              },
+              {
                 "id": "custom.cellOptions",
                 "value": {
                   "mode": "gradient",
