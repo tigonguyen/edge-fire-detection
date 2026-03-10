@@ -64,7 +64,7 @@ def get_data_loaders(data_dir, batch_size=32):
         train_dataset,
         batch_size=batch_size,
         shuffle=True,
-        num_workers=4,
+        num_workers=0,
         pin_memory=True
     )
     
@@ -72,7 +72,7 @@ def get_data_loaders(data_dir, batch_size=32):
         val_dataset,
         batch_size=batch_size,
         shuffle=False,
-        num_workers=4,
+        num_workers=0,
         pin_memory=True
     )
     

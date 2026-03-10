@@ -1,33 +1,28 @@
-# ── Stage 1: Build ────────────────────────────────────────────────────
-FROM debian:bookworm-slim AS builder
+FROM python:3.11-slim
 
+# Install system dependencies for OpenCV
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential cmake wget ca-certificates \
-    libopencv-dev libmosquitto-dev nlohmann-json3-dev libcurl4-openssl-dev
-
-WORKDIR /build
-COPY CMakeLists.txt extractor.cpp ./
-# Build C++ Extractor
-RUN mkdir out && cd out \
-    && cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/app .. \
-    && make -j$(nproc) \
-    && make install \
-    && strip /app/bin/fire_frame_extractor
-
-# ── Stage 2: Runtime ──────────────────────────────────────────────────
-FROM debian:bookworm-slim
-
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    libopencv-core406t64 libopencv-imgproc406t64 libopencv-videoio406t64 \
-    libmosquitto1 libcurl4 ca-certificates \
+    libgl1 libglib2.0-0 \
     && rm -rf /var/lib/apt/lists/*
 
-COPY --from=builder /app/bin/fire_frame_extractor /usr/local/bin/
+WORKDIR /app
 
-ENV MQTT_HOST="mqtt-broker.default.svc"
-ENV MQTT_PORT="1883"
-ENV SOURCES_JSON="/config/sources.json"
-ENV VIDEO_DIR="/videos"
+# Install Python dependencies
+RUN pip install --no-cache-dir paho-mqtt==2.1.0 opencv-python-headless
+
+# Copy application code
+COPY app/edge/binhphuoc/frame-extractor/extractor.py .
+
+# Copy video files directly into the image
 RUN mkdir -p /videos
+COPY videos/*.mp4 /videos/
 
-ENTRYPOINT ["fire_frame_extractor"]
+# Configure environment variables
+ENV PYTHONUNBUFFERED=1
+ENV MQTT_BROKER="mqtt-broker-binhphuoc.default.svc"
+ENV MQTT_PORT="1883"
+ENV VIDEO_DIR="/videos"
+ENV FPS="2"
+
+# Run the extractor
+CMD ["python", "extractor.py"]

@@ -1,0 +1,279 @@
+apiVersion: v1
+data:
+  fire-detection.json: "{\n  \"annotations\": {\n    \"list\": []\n  },\n  \"editable\":
+    true,\n  \"fiscalYearStartMonth\": 0,\n  \"graphTooltip\": 0,\n  \"id\": null,\n
+    \ \"links\": [],\n  \"liveNow\": true,\n  \"panels\": [\n    {\n      \"title\":
+    \"\U0001F525 Fire Detection Map\",\n      \"type\": \"geomap\",\n      \"gridPos\":
+    {\n        \"h\": 14,\n        \"w\": 14,\n        \"x\": 0,\n        \"y\": 0\n
+    \     },\n      \"id\": 1,\n      \"datasource\": {\n        \"type\": \"prometheus\",\n
+    \       \"uid\": \"prometheus\"\n      },\n      \"targets\": [\n        {\n          \"datasource\":
+    {\n            \"type\": \"prometheus\",\n            \"uid\": \"prometheus\"\n
+    \         },\n          \"expr\": \"fire_alert_info\",\n          \"format\":
+    \"table\",\n          \"instant\": true,\n          \"legendFormat\": \"\",\n
+    \         \"refId\": \"A\"\n        }\n      ],\n      \"options\": {\n        \"view\":
+    {\n          \"id\": \"coords\",\n          \"lat\": 16.0,\n          \"lon\":
+    108.0,\n          \"zoom\": 6\n        },\n        \"basemap\": {\n          \"config\":
+    {},\n          \"name\": \"OpenStreetMap\",\n          \"type\": \"osm-standard\"\n
+    \       },\n        \"controls\": {\n          \"mouseWheelZoom\": true,\n          \"showAttribution\":
+    true,\n          \"showDebug\": false,\n          \"showMeasure\": false,\n          \"showScale\":
+    true,\n          \"showZoom\": true\n        },\n        \"layers\": [\n          {\n
+    \           \"config\": {\n              \"showLegend\": true,\n              \"style\":
+    {\n                \"color\": {\n                  \"field\": \"Value\",\n                  \"fixed\":
+    \"red\"\n                },\n                \"opacity\": 0.8,\n                \"rotation\":
+    {\n                  \"fixed\": 0,\n                  \"max\": 360,\n                  \"min\":
+    -360,\n                  \"mode\": \"mod\"\n                },\n                \"size\":
+    {\n                  \"field\": \"Value\",\n                  \"fixed\": 10,\n
+    \                 \"max\": 20,\n                  \"min\": 5\n                },\n
+    \               \"symbol\": {\n                  \"fixed\": \"img/icons/marker/circle.svg\",\n
+    \                 \"mode\": \"fixed\"\n                },\n                \"symbolAlign\":
+    {\n                  \"horizontal\": \"center\",\n                  \"vertical\":
+    \"center\"\n                },\n                \"text\": {\n                  \"field\":
+    \"location\",\n                  \"fixed\": \"\",\n                  \"mode\":
+    \"field\"\n                },\n                \"textConfig\": {\n                  \"fontSize\":
+    12,\n                  \"offsetX\": 0,\n                  \"offsetY\": -15,\n
+    \                 \"textAlign\": \"center\",\n                  \"textBaseline\":
+    \"middle\"\n                }\n              }\n            },\n            \"location\":
+    {\n              \"latitude\": \"latitude\",\n              \"longitude\": \"longitude\",\n
+    \             \"mode\": \"coords\"\n            },\n            \"name\": \"Fire
+    Alerts\",\n            \"tooltip\": true,\n            \"type\": \"markers\"\n
+    \         }\n        ],\n        \"tooltip\": {\n          \"mode\": \"details\"\n
+    \       }\n      },\n      \"fieldConfig\": {\n        \"defaults\": {\n          \"color\":
+    {\n            \"mode\": \"thresholds\"\n          },\n          \"mappings\":
+    [],\n          \"thresholds\": {\n            \"mode\": \"absolute\",\n            \"steps\":
+    [\n              {\n                \"color\": \"yellow\",\n                \"value\":
+    null\n              },\n              {\n                \"color\": \"orange\",\n
+    \               \"value\": 0.7\n              },\n              {\n                \"color\":
+    \"red\",\n                \"value\": 0.85\n              }\n            ]\n          }\n
+    \       },\n        \"overrides\": []\n      }\n    },\n    {\n      \"title\":
+    \"\U0001F534 Active Alerts\",\n      \"type\": \"stat\",\n      \"gridPos\": {\n
+    \       \"h\": 4,\n        \"w\": 5,\n        \"x\": 14,\n        \"y\": 0\n      },\n
+    \     \"id\": 2,\n      \"datasource\": {\n        \"type\": \"prometheus\",\n
+    \       \"uid\": \"prometheus\"\n      },\n      \"targets\": [\n        {\n          \"expr\":
+    \"fire_active_alerts_count\",\n          \"legendFormat\": \"Active Alerts\",\n
+    \         \"refId\": \"A\"\n        }\n      ],\n      \"options\": {\n        \"colorMode\":
+    \"background\",\n        \"graphMode\": \"none\",\n        \"justifyMode\": \"center\",\n
+    \       \"orientation\": \"auto\",\n        \"reduceOptions\": {\n          \"calcs\":
+    [\"lastNotNull\"],\n          \"fields\": \"\",\n          \"values\": false\n
+    \       },\n        \"textMode\": \"auto\"\n      },\n      \"fieldConfig\": {\n
+    \       \"defaults\": {\n          \"color\": {\n            \"mode\": \"thresholds\"\n
+    \         },\n          \"thresholds\": {\n            \"mode\": \"absolute\",\n
+    \           \"steps\": [\n              {\n                \"color\": \"green\",\n
+    \               \"value\": null\n              },\n              {\n                \"color\":
+    \"yellow\",\n                \"value\": 1\n              },\n              {\n
+    \               \"color\": \"red\",\n                \"value\": 5\n              }\n
+    \           ]\n          },\n          \"unit\": \"none\"\n        }\n      }\n
+    \   },\n    {\n      \"title\": \"✅ Resolved Alerts\",\n      \"type\": \"stat\",\n
+    \     \"gridPos\": {\n        \"h\": 4,\n        \"w\": 5,\n        \"x\": 19,\n
+    \       \"y\": 0\n      },\n      \"id\": 8,\n      \"datasource\": {\n        \"type\":
+    \"prometheus\",\n        \"uid\": \"prometheus\"\n      },\n      \"targets\":
+    [\n        {\n          \"expr\": \"fire_resolved_count\",\n          \"legendFormat\":
+    \"Resolved\",\n          \"refId\": \"A\"\n        }\n      ],\n      \"options\":
+    {\n        \"colorMode\": \"background\",\n        \"graphMode\": \"none\",\n
+    \       \"justifyMode\": \"center\",\n        \"orientation\": \"auto\",\n        \"reduceOptions\":
+    {\n          \"calcs\": [\"lastNotNull\"],\n          \"fields\": \"\",\n          \"values\":
+    false\n        },\n        \"textMode\": \"auto\"\n      },\n      \"fieldConfig\":
+    {\n        \"defaults\": {\n          \"color\": {\n            \"mode\": \"thresholds\"\n
+    \         },\n          \"thresholds\": {\n            \"mode\": \"absolute\",\n
+    \           \"steps\": [\n              {\n                \"color\": \"green\",\n
+    \               \"value\": null\n              }\n            ]\n          },\n
+    \         \"unit\": \"none\"\n        }\n      }\n    },\n    {\n      \"title\":
+    \"\U0001F4CA Total Alerts (All Time)\",\n      \"type\": \"stat\",\n      \"gridPos\":
+    {\n        \"h\": 4,\n        \"w\": 5,\n        \"x\": 14,\n        \"y\": 4\n
+    \     },\n      \"id\": 9,\n      \"datasource\": {\n        \"type\": \"prometheus\",\n
+    \       \"uid\": \"prometheus\"\n      },\n      \"targets\": [\n        {\n          \"expr\":
+    \"sum(fire_alerts_total)\",\n          \"legendFormat\": \"Total\",\n          \"refId\":
+    \"A\"\n        }\n      ],\n      \"options\": {\n        \"colorMode\": \"background\",\n
+    \       \"graphMode\": \"none\",\n        \"justifyMode\": \"center\",\n        \"orientation\":
+    \"auto\",\n        \"reduceOptions\": {\n          \"calcs\": [\"lastNotNull\"],\n
+    \         \"fields\": \"\",\n          \"values\": false\n        },\n        \"textMode\":
+    \"auto\"\n      },\n      \"fieldConfig\": {\n        \"defaults\": {\n          \"color\":
+    {\n            \"mode\": \"thresholds\"\n          },\n          \"thresholds\":
+    {\n            \"mode\": \"absolute\",\n            \"steps\": [\n              {\n
+    \               \"color\": \"blue\",\n                \"value\": null\n              }\n
+    \           ]\n          },\n          \"unit\": \"none\"\n        }\n      }\n
+    \   },\n    {\n      \"title\": \"\U0001F4E1 Online Devices\",\n      \"type\":
+    \"stat\",\n      \"gridPos\": {\n        \"h\": 4,\n        \"w\": 5,\n        \"x\":
+    19,\n        \"y\": 4\n      },\n      \"id\": 10,\n      \"datasource\": {\n
+    \       \"type\": \"prometheus\",\n        \"uid\": \"prometheus\"\n      },\n
+    \     \"targets\": [\n        {\n          \"expr\": \"count(fire_device_status
+    == 1)\",\n          \"legendFormat\": \"Online\",\n          \"refId\": \"A\"\n
+    \       }\n      ],\n      \"options\": {\n        \"colorMode\": \"background\",\n
+    \       \"graphMode\": \"none\",\n        \"justifyMode\": \"center\",\n        \"orientation\":
+    \"auto\",\n        \"reduceOptions\": {\n          \"calcs\": [\"lastNotNull\"],\n
+    \         \"fields\": \"\",\n          \"values\": false\n        },\n        \"textMode\":
+    \"auto\"\n      },\n      \"fieldConfig\": {\n        \"defaults\": {\n          \"color\":
+    {\n            \"mode\": \"thresholds\"\n          },\n          \"thresholds\":
+    {\n            \"mode\": \"absolute\",\n            \"steps\": [\n              {\n
+    \               \"color\": \"green\",\n                \"value\": null\n              }\n
+    \           ]\n          },\n          \"unit\": \"none\"\n        }\n      }\n
+    \   },\n    {\n      \"title\": \"\U0001F4C8 Alerts Over Time\",\n      \"type\":
+    \"timeseries\",\n      \"gridPos\": {\n        \"h\": 6,\n        \"w\": 10,\n
+    \       \"x\": 14,\n        \"y\": 8\n      },\n      \"id\": 3,\n      \"datasource\":
+    {\n        \"type\": \"prometheus\",\n        \"uid\": \"prometheus\"\n      },\n
+    \     \"targets\": [\n        {\n          \"expr\": \"fire_active_alerts_count\",\n
+    \         \"legendFormat\": \"Active Alerts\",\n          \"refId\": \"A\"\n        },\n
+    \       {\n          \"expr\": \"sum(increase(fire_alerts_total[1h])) or vector(0)\",\n
+    \         \"legendFormat\": \"New (1h)\",\n          \"refId\": \"B\"\n        },\n
+    \       {\n          \"expr\": \"fire_resolved_count\",\n          \"legendFormat\":
+    \"Resolved\",\n          \"refId\": \"C\"\n        }\n      ],\n      \"options\":
+    {\n        \"legend\": {\n          \"calcs\": [],\n          \"displayMode\":
+    \"list\",\n          \"placement\": \"bottom\"\n        }\n      },\n      \"fieldConfig\":
+    {\n        \"defaults\": {\n          \"color\": {\n            \"mode\": \"palette-classic\"\n
+    \         },\n          \"custom\": {\n            \"axisLabel\": \"\",\n            \"axisPlacement\":
+    \"auto\",\n            \"axisSoftMin\": 0,\n            \"axisSoftMax\": 10,\n
+    \           \"drawStyle\": \"line\",\n            \"fillOpacity\": 20,\n            \"lineWidth\":
+    2,\n            \"pointSize\": 5,\n            \"showPoints\": \"auto\",\n            \"scaleDistribution\":
+    {\n              \"type\": \"linear\"\n            }\n          },\n          \"min\":
+    0,\n          \"decimals\": 0\n        },\n        \"overrides\": [\n          {\n
+    \           \"matcher\": {\n              \"id\": \"byName\",\n              \"options\":
+    \"Active Alerts\"\n            },\n            \"properties\": [\n              {\n
+    \               \"id\": \"color\",\n                \"value\": {\n                  \"fixedColor\":
+    \"red\",\n                  \"mode\": \"fixed\"\n                }\n              }\n
+    \           ]\n          },\n          {\n            \"matcher\": {\n              \"id\":
+    \"byName\",\n              \"options\": \"Resolved\"\n            },\n            \"properties\":
+    [\n              {\n                \"id\": \"color\",\n                \"value\":
+    {\n                  \"fixedColor\": \"green\",\n                  \"mode\": \"fixed\"\n
+    \               }\n              }\n            ]\n          },\n          {\n
+    \           \"matcher\": {\n              \"id\": \"byName\",\n              \"options\":
+    \"New (1h)\"\n            },\n            \"properties\": [\n              {\n
+    \               \"id\": \"color\",\n                \"value\": {\n                  \"fixedColor\":
+    \"orange\",\n                  \"mode\": \"fixed\"\n                }\n              }\n
+    \           ]\n          }\n        ]\n      }\n    },\n    {\n      \"title\":
+    \"\U0001F534 Active Alerts Table\",\n      \"type\": \"table\",\n      \"gridPos\":
+    {\n        \"h\": 8,\n        \"w\": 14,\n        \"x\": 0,\n        \"y\": 14\n
+    \     },\n      \"id\": 4,\n      \"datasource\": {\n        \"type\": \"prometheus\",\n
+    \       \"uid\": \"prometheus\"\n      },\n      \"targets\": [\n        {\n          \"expr\":
+    \"fire_alert_info\",\n          \"format\": \"table\",\n          \"instant\":
+    true,\n          \"refId\": \"A\"\n        }\n      ],\n      \"transformations\":
+    [\n        {\n          \"id\": \"organize\",\n          \"options\": {\n            \"excludeByName\":
+    {\n              \"Time\": true,\n              \"__name__\": true,\n              \"instance\":
+    true,\n              \"job\": true\n            },\n            \"indexByName\":
+    {\n              \"alert_id\": 0,\n              \"location\": 1,\n              \"Value\":
+    2,\n              \"class\": 3,\n              \"device_id\": 4,\n              \"detected_at\":
+    5,\n              \"image_url\": 6\n            },\n            \"renameByName\":
+    {\n              \"Value\": \"Confidence\",\n              \"alert_id\": \"Alert
+    ID\",\n              \"device_id\": \"Device\",\n              \"location\": \"Location\",\n
+    \             \"class\": \"Type\",\n              \"detected_at\": \"Time\",\n
+    \             \"image_url\": \"Image\"\n            }\n          }\n        }\n
+    \     ],\n      \"options\": {\n        \"showHeader\": true,\n        \"cellHeight\":
+    \"sm\",\n        \"footer\": {\n          \"show\": true,\n          \"reducer\":
+    [\"count\"],\n          \"countRows\": true\n        }\n      },\n      \"fieldConfig\":
+    {\n        \"defaults\": {\n          \"custom\": {\n            \"align\": \"auto\",\n
+    \           \"cellOptions\": {\n              \"type\": \"auto\"\n            }\n
+    \         }\n        },\n        \"overrides\": [\n          {\n            \"matcher\":
+    {\n              \"id\": \"byName\",\n              \"options\": \"Confidence\"\n
+    \           },\n            \"properties\": [\n              {\n                \"id\":
+    \"unit\",\n                \"value\": \"percentunit\"\n              },\n              {\n
+    \               \"id\": \"min\",\n                \"value\": 0\n              },\n
+    \             {\n                \"id\": \"max\",\n                \"value\":
+    1\n              },\n              {\n                \"id\": \"custom.cellOptions\",\n
+    \               \"value\": {\n                  \"mode\": \"gradient\",\n                  \"type\":
+    \"gauge\"\n                }\n              },\n              {\n                \"id\":
+    \"thresholds\",\n                \"value\": {\n                  \"mode\": \"absolute\",\n
+    \                 \"steps\": [\n                    {\"color\": \"yellow\", \"value\":
+    null},\n                    {\"color\": \"orange\", \"value\": 0.7},\n                    {\"color\":
+    \"red\", \"value\": 0.85}\n                  ]\n                }\n              }\n
+    \           ]\n          },\n          {\n            \"matcher\": {\n              \"id\":
+    \"byName\",\n              \"options\": \"Image\"\n            },\n            \"properties\":
+    [\n              {\n                \"id\": \"custom.cellOptions\",\n                \"value\":
+    {\n                  \"type\": \"data-links\"\n                }\n              },\n
+    \             {\n                \"id\": \"links\",\n                \"value\":
+    [\n                  {\n                    \"title\": \"View Image\",\n                    \"url\":
+    \"${__value.text}\"\n                  }\n                ]\n              }\n
+    \           ]\n          },\n          {\n            \"matcher\": {\n              \"id\":
+    \"byName\",\n              \"options\": \"Type\"\n            },\n            \"properties\":
+    [\n              {\n                \"id\": \"mappings\",\n                \"value\":
+    [\n                  {\n                    \"type\": \"value\",\n                    \"options\":
+    {\n                      \"fire\": {\n                        \"text\": \"\U0001F525
+    Fire\",\n                        \"color\": \"red\"\n                      },\n
+    \                     \"smoke\": {\n                        \"text\": \"\U0001F4A8
+    Smoke\",\n                        \"color\": \"orange\"\n                      }\n
+    \                   }\n                  }\n                ]\n              }\n
+    \           ]\n          }\n        ]\n      }\n    },\n    {\n      \"title\":
+    \"✅ Resolved by Type\",\n      \"type\": \"piechart\",\n      \"gridPos\": {\n
+    \       \"h\": 8,\n        \"w\": 5,\n        \"x\": 14,\n        \"y\": 14\n
+    \     },\n      \"id\": 11,\n      \"datasource\": {\n        \"type\": \"prometheus\",\n
+    \       \"uid\": \"prometheus\"\n      },\n      \"targets\": [\n        {\n          \"expr\":
+    \"sum by (resolution_type) (fire_resolved_total)\",\n          \"legendFormat\":
+    \"{{ resolution_type }}\",\n          \"refId\": \"A\"\n        }\n      ],\n
+    \     \"options\": {\n        \"legend\": {\n          \"displayMode\": \"table\",\n
+    \         \"placement\": \"right\",\n          \"values\": [\"value\", \"percent\"]\n
+    \       },\n        \"pieType\": \"donut\"\n      },\n      \"fieldConfig\": {\n
+    \       \"defaults\": {\n          \"color\": {\n            \"mode\": \"palette-classic\"\n
+    \         }\n        },\n        \"overrides\": [\n          {\n            \"matcher\":
+    {\n              \"id\": \"byName\",\n              \"options\": \"extinguished\"\n
+    \           },\n            \"properties\": [\n              {\n                \"id\":
+    \"color\",\n                \"value\": {\n                  \"fixedColor\": \"green\",\n
+    \                 \"mode\": \"fixed\"\n                }\n              }\n            ]\n
+    \         },\n          {\n            \"matcher\": {\n              \"id\": \"byName\",\n
+    \             \"options\": \"false_positive\"\n            },\n            \"properties\":
+    [\n              {\n                \"id\": \"color\",\n                \"value\":
+    {\n                  \"fixedColor\": \"yellow\",\n                  \"mode\":
+    \"fixed\"\n                }\n              }\n            ]\n          },\n          {\n
+    \           \"matcher\": {\n              \"id\": \"byName\",\n              \"options\":
+    \"contained\"\n            },\n            \"properties\": [\n              {\n
+    \               \"id\": \"color\",\n                \"value\": {\n                  \"fixedColor\":
+    \"blue\",\n                  \"mode\": \"fixed\"\n                }\n              }\n
+    \           ]\n          }\n        ]\n      }\n    },\n    {\n      \"title\":
+    \"\U0001F525 Alerts by Device\",\n      \"type\": \"piechart\",\n      \"gridPos\":
+    {\n        \"h\": 8,\n        \"w\": 5,\n        \"x\": 19,\n        \"y\": 14\n
+    \     },\n      \"id\": 7,\n      \"datasource\": {\n        \"type\": \"prometheus\",\n
+    \       \"uid\": \"prometheus\"\n      },\n      \"targets\": [\n        {\n          \"expr\":
+    \"sum by (device_id) (fire_alerts_total)\",\n          \"legendFormat\": \"{{
+    device_id }}\",\n          \"refId\": \"A\"\n        }\n      ],\n      \"options\":
+    {\n        \"legend\": {\n          \"displayMode\": \"table\",\n          \"placement\":
+    \"right\",\n          \"values\": [\"value\"]\n        },\n        \"pieType\":
+    \"donut\"\n      }\n    },\n    {\n      \"title\": \"\U0001F4E1 Device Status
+    Map\",\n      \"type\": \"geomap\",\n      \"gridPos\": {\n        \"h\": 8,\n
+    \       \"w\": 8,\n        \"x\": 0,\n        \"y\": 22\n      },\n      \"id\":
+    5,\n      \"datasource\": {\n        \"type\": \"prometheus\",\n        \"uid\":
+    \"prometheus\"\n      },\n      \"targets\": [\n        {\n          \"expr\":
+    \"fire_device_status\",\n          \"format\": \"table\",\n          \"instant\":
+    true,\n          \"refId\": \"A\"\n        }\n      ],\n      \"options\": {\n
+    \       \"view\": {\n          \"id\": \"coords\",\n          \"lat\": 16.0,\n
+    \         \"lon\": 108.0,\n          \"zoom\": 6\n        },\n        \"basemap\":
+    {\n          \"type\": \"osm-standard\"\n        },\n        \"layers\": [\n          {\n
+    \           \"config\": {\n              \"style\": {\n                \"color\":
+    {\n                  \"field\": \"Value\",\n                  \"fixed\": \"green\"\n
+    \               },\n                \"size\": {\n                  \"fixed\":
+    8\n                },\n                \"symbol\": {\n                  \"fixed\":
+    \"img/icons/marker/square.svg\"\n                }\n              }\n            },\n
+    \           \"location\": {\n              \"latitude\": \"latitude\",\n              \"longitude\":
+    \"longitude\",\n              \"mode\": \"coords\"\n            },\n            \"name\":
+    \"Devices\",\n            \"tooltip\": true,\n            \"type\": \"markers\"\n
+    \         }\n        ]\n      },\n      \"fieldConfig\": {\n        \"defaults\":
+    {\n          \"thresholds\": {\n            \"steps\": [\n              {\"color\":
+    \"red\", \"value\": null},\n              {\"color\": \"green\", \"value\": 1}\n
+    \           ]\n          }\n        }\n      }\n    },\n    {\n      \"title\":
+    \"\U0001F4CA Confidence Distribution\",\n      \"type\": \"histogram\",\n      \"gridPos\":
+    {\n        \"h\": 8,\n        \"w\": 8,\n        \"x\": 8,\n        \"y\": 22\n
+    \     },\n      \"id\": 6,\n      \"datasource\": {\n        \"type\": \"prometheus\",\n
+    \       \"uid\": \"prometheus\"\n      },\n      \"targets\": [\n        {\n          \"expr\":
+    \"fire_confidence_latest\",\n          \"format\": \"time_series\",\n          \"refId\":
+    \"A\"\n        }\n      ]\n    },\n    {\n      \"title\": \"\U0001F525 Alerts
+    by Location\",\n      \"type\": \"barchart\",\n      \"gridPos\": {\n        \"h\":
+    8,\n        \"w\": 8,\n        \"x\": 16,\n        \"y\": 22\n      },\n      \"id\":
+    12,\n      \"datasource\": {\n        \"type\": \"prometheus\",\n        \"uid\":
+    \"prometheus\"\n      },\n      \"targets\": [\n        {\n          \"expr\":
+    \"sum by (location) (fire_alerts_total)\",\n          \"legendFormat\": \"{{ location
+    }}\",\n          \"refId\": \"A\"\n        }\n      ],\n      \"options\": {\n
+    \       \"orientation\": \"horizontal\",\n        \"xTickLabelRotation\": 0,\n
+    \       \"showValue\": \"auto\",\n        \"stacking\": \"none\",\n        \"groupWidth\":
+    0.7,\n        \"barWidth\": 0.9\n      },\n      \"fieldConfig\": {\n        \"defaults\":
+    {\n          \"color\": {\n            \"mode\": \"palette-classic\"\n          }\n
+    \       }\n      }\n    }\n  ],\n  \"refresh\": \"10s\",\n  \"schemaVersion\":
+    38,\n  \"tags\": [\"fire-detection\", \"geomap\", \"vietnam\"],\n  \"templating\":
+    {\n    \"list\": [\n      {\n        \"name\": \"device\",\n        \"type\":
+    \"query\",\n        \"datasource\": {\n          \"type\": \"prometheus\",\n          \"uid\":
+    \"prometheus\"\n        },\n        \"query\": \"label_values(fire_alert_info,
+    device_id)\",\n        \"includeAll\": true,\n        \"multi\": true\n      },\n
+    \     {\n        \"name\": \"region\",\n        \"type\": \"query\",\n        \"datasource\":
+    {\n          \"type\": \"prometheus\",\n          \"uid\": \"prometheus\"\n        },\n
+    \       \"query\": \"label_values(fire_alert_info, location)\",\n        \"includeAll\":
+    true,\n        \"multi\": true\n      }\n    ]\n  },\n  \"time\": {\n    \"from\":
+    \"now-1h\",\n    \"to\": \"now\"\n  },\n  \"timepicker\": {},\n  \"timezone\":
+    \"\",\n  \"title\": \"Fire Detection Dashboard\",\n  \"uid\": \"fire-detection-main\",\n
+    \ \"version\": 2\n}\n"
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-json

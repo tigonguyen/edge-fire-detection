@@ -8,7 +8,7 @@ metadata:
     tier: edge
     location: binhphuoc
 spec:
-  replicas: 1
+  replicas: 3
   selector:
     matchLabels:
       app: inference
@@ -35,17 +35,8 @@ spec:
               value: "1"
           resources:
             limits:
-              memory: 128Mi
-              cpu: "250m"
+              memory: 1024Mi
+              cpu: "1000m"
             requests:
-              memory: 64Mi
-              cpu: "100m"
-          volumeMounts:
-            - name: model-vol
-              mountPath: /model/fire_detection.onnx
-              subPath: fire_detection.onnx
-              readOnly: true
-      volumes:
-        - name: model-vol
-          configMap:
-            name: edge-model-config
+              memory: 512Mi
+              cpu: "500m"

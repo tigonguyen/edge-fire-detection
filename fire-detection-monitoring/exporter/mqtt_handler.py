@@ -159,6 +159,19 @@ class MQTTHandler:
                 return True
         return False
 
+    def _increment_alert_frames(self, device_id: str, location_name: str):
+        """Increment frame count for active alert so Grafana pinpoint grows"""
+        key = self._get_cooldown_key(device_id, location_name)
+        if key in self.active_cooldowns:
+            alert_id = self.active_cooldowns[key]['alert_id']
+            if alert_id in self.metrics.active_alerts:
+                alert = self.metrics.active_alerts[alert_id]
+                # Increment and force gauge update
+                alert.fire_frames_count += 1
+                self.metrics._update_metrics(alert)
+                return True
+        return False
+
     def connect(self):
         """Connect to MQTT broker"""
         try:
@@ -240,6 +253,9 @@ class MQTTHandler:
         if detections:
             detection_class = detections[0].get('class', 'fire')
 
+        # Check cooldown - prevent alert spam from same device+location
+        in_cooldown, cooldown_info = self._is_in_cooldown(device_id, location_name)
+
         # Save image if included
         image_url = ""
         filepath = None
@@ -248,23 +264,36 @@ class MQTTHandler:
             print(f"Received image_base64: {len(image_base64)} bytes")
             try:
                 image_data = base64.b64decode(image_base64)
-                filename = f"{alert_id}.jpg"
-                filepath = os.path.join(self.images_dir, filename)
+                
+                # If in cooldown and new confidence is not higher, skip saving to reduce disk I/O
+                if in_cooldown and confidence <= cooldown_info['confidence']:
+                    pass
+                else:
+                    filename = f"temp_{int(time.time())}_{random.randint(100, 999)}.jpg" if in_cooldown else f"{alert_id}.jpg"
+                    filepath = os.path.join(self.images_dir, filename)
 
-                # Ensure directory exists
-                os.makedirs(self.images_dir, exist_ok=True)
+                    # Ensure directory exists
+                    os.makedirs(self.images_dir, exist_ok=True)
 
-                with open(filepath, 'wb') as f:
-                    f.write(image_data)
+                    with open(filepath, 'wb') as f:
+                        f.write(image_data)
 
-                image_url = f"{self.image_base_url}/{filename}"
-                print(f"Saved image: {filepath}, URL: {image_url}")
+                    image_url = f"{self.image_base_url}/{filename}"
+                    print(f"Saved image: {filepath}, URL: {image_url}")
 
             except Exception as e:
                 print(f"Failed to save image: {e}")
                 filepath = None
         else:
             print(f"No image_base64 in payload for alert {alert_id}")
+
+        if in_cooldown:
+            print(f"[COOLDOWN] Alert for {device_id}@{location_name} is in cooldown (alert: {cooldown_info['alert_id']})")
+            if confidence > cooldown_info['confidence']:
+                self._update_cooldown_confidence(device_id, location_name, confidence, image_url)
+            else:
+                print(f"[COOLDOWN] Skipping - new confidence ({confidence:.2f}) <= existing ({cooldown_info['confidence']:.2f})")
+            return
 
         # Create FireAlert object
         alert = FireAlert(
@@ -281,6 +310,9 @@ class MQTTHandler:
 
         # Add to metrics
         self.metrics.add_alert(alert)
+
+        # Set cooldown for this device+location
+        self._set_cooldown(device_id, location_name, alert_id, confidence)
 
         # Send notification
         threading.Thread(

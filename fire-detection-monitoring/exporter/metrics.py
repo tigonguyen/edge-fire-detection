@@ -18,6 +18,7 @@ class FireAlert:
     detection_class: str
     detected_at: str
     image_url: str
+    fire_frames_count: int = 1
     timestamp: float = field(default_factory=time.time)
 
 class FireDetectionMetrics:
@@ -177,7 +178,7 @@ class FireDetectionMetrics:
             detected_at=alert.detected_at,
             image_url=alert.image_url,
             **{'class': alert.detection_class}
-        ).set(alert.confidence)
+        ).set(alert.fire_frames_count)
 
         # 2. Latest confidence per device
         self.confidence_gauge.labels(
@@ -282,7 +283,7 @@ class FireDetectionMetrics:
                 detected_at=alert.detected_at,
                 image_url=alert.image_url,
                 **{'class': alert.detection_class}
-            ).set(alert.confidence)
+            ).set(alert.fire_frames_count)
 
             # Update confidence gauge
             self.confidence_gauge.labels(

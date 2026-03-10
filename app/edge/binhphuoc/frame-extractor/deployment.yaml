@@ -5,53 +5,39 @@ metadata:
   namespace: default
   labels:
     app: frame-extractor
-    tier: devices
+    tier: edge
     location: binhphuoc
 spec:
   replicas: 1
   selector:
     matchLabels:
       app: frame-extractor
-      location: binhphuoc
-  strategy:
-    type: Recreate
   template:
     metadata:
       labels:
         app: frame-extractor
-        tier: devices
+        tier: edge
         location: binhphuoc
     spec:
       containers:
         - name: extractor
           image: fire-frame-extractor:latest
-          imagePullPolicy: Never
+          imagePullPolicy: IfNotPresent
           env:
-            - name: MQTT_HOST
+            - name: MQTT_BROKER
               value: mqtt-broker-binhphuoc.default.svc
-            - name: FRAME_INTERVAL
-              value: "2"
-            - name: SOURCES_JSON
-              value: /config/sources.json
+            - name: MQTT_PORT
+              value: "1883"
             - name: VIDEO_DIR
-              value: /videos
-          volumeMounts:
-            - name: config
-              mountPath: /config
-            - name: local-video
-              mountPath: /videos
+              value: "/videos"
+            - name: FPS
+              value: "2"
+            - name: PYTHONUNBUFFERED
+              value: "1"
           resources:
             limits:
               memory: 256Mi
-              cpu: 500m
+              cpu: "500m"
             requests:
               memory: 128Mi
-              cpu: 100m
-      volumes:
-        - name: config
-          configMap:
-            name: frame-sources-binhphuoc
-        - name: local-video
-          hostPath:
-            path: /Users/tigonguyen/Documents/DevOps/repos/personal-projects/edge-fire-detection
-            type: Directory
+              cpu: "250m"
