@@ -13,10 +13,10 @@ The ecosystem strictly adheres to an Edge-to-Cloud topology, physically mimickin
 ```mermaid
 flowchart TD
     subgraph "🌲 Edge Kubernetes Sites (Cameras & Compute)"
-        A([Drone / Static Camera MP4 Feeds])
-        B[Edge Frame Extractor (Python/OpenCV)]
-        C((Edge MQTT Broker))
-        D[Edge AI Inference Engine (PyTorch)]
+        A(["Drone / Static Camera MP4 Feeds"])
+        B["Edge Frame Extractor (Python/OpenCV)"]
+        C(("Edge MQTT Broker"))
+        D["Edge AI Inference Engine (PyTorch)"]
         
         A -->|Reads mp4s| B
         B -->|Publishes 2FPS Resized Frames| C
@@ -24,10 +24,10 @@ flowchart TD
     end
     
     subgraph "☁️ Central Cloud Infrastructure (Aggregator & Alerting)"
-        E[Cloud Exporter Daemon]
-        F[(Cloud Prometheus TSDB)]
-        G[Prometheus AlertManager]
-        H[Grafana Dashboard & GeoMap]
+        E["Cloud Exporter Daemon"]
+        F[("Cloud Prometheus TSDB")]
+        G["Prometheus AlertManager"]
+        H["Grafana Dashboard & GeoMap"]
         
         D -->|Publishes JSON Alert telemetry| E
         E -->|Translates to Prometheus /metrics| F
