@@ -22,8 +22,8 @@ spec:
 
       containers:
         - name: inference
-          image: fire-inference-python:latest
-          imagePullPolicy: IfNotPresent
+          image: fire-inference-python:v2
+          imagePullPolicy: Never
           env:
             - name: MQTT_BROKER
               value: mqtt-broker-binhphuoc.default.svc

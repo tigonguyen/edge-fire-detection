@@ -63,6 +63,21 @@ class FireDetectionMetrics:
             ]
         )
 
+        self.fire_alert_frames_gauge = Gauge(
+            'fire_alert_frames_count',
+            'Number of consecutive fire frames for an active alert',
+            labelnames=[
+                'alert_id',
+                'device_id',
+                'latitude',      # BẮT BUỘC cho Geomap
+                'longitude',     # BẮT BUỘC cho Geomap
+                'location',
+                'class',
+                'detected_at',
+                'image_url'
+            ]
+        )
+
         # 2. Latest confidence per device (CHO GEOMAP)
         self.confidence_gauge = Gauge(
             'fire_confidence_latest',
@@ -178,6 +193,17 @@ class FireDetectionMetrics:
             detected_at=alert.detected_at,
             image_url=alert.image_url,
             **{'class': alert.detection_class}
+        ).set(alert.confidence)
+
+        self.fire_alert_frames_gauge.labels(
+            alert_id=alert.alert_id,
+            device_id=alert.device_id,
+            latitude=str(alert.latitude),
+            longitude=str(alert.longitude),
+            location=alert.location,
+            detected_at=alert.detected_at,
+            image_url=alert.image_url,
+            **{'class': alert.detection_class}
         ).set(alert.fire_frames_count)
 
         # 2. Latest confidence per device
@@ -265,6 +291,16 @@ class FireDetectionMetrics:
                     alert.detected_at,
                     alert.image_url
                 )
+                self.fire_alert_frames_gauge.remove(
+                    alert.alert_id,
+                    alert.device_id,
+                    str(alert.latitude),
+                    str(alert.longitude),
+                    alert.location,
+                    alert.detection_class,
+                    alert.detected_at,
+                    alert.image_url
+                )
             except KeyError:
                 pass
 
@@ -275,6 +311,17 @@ class FireDetectionMetrics:
 
             # Re-add with new confidence
             self.fire_alert_gauge.labels(
+                alert_id=alert.alert_id,
+                device_id=alert.device_id,
+                latitude=str(alert.latitude),
+                longitude=str(alert.longitude),
+                location=alert.location,
+                detected_at=alert.detected_at,
+                image_url=alert.image_url,
+                **{'class': alert.detection_class}
+            ).set(alert.confidence)
+
+            self.fire_alert_frames_gauge.labels(
                 alert_id=alert.alert_id,
                 device_id=alert.device_id,
                 latitude=str(alert.latitude),
@@ -306,6 +353,16 @@ class FireDetectionMetrics:
                 # Remove from Prometheus - sử dụng keyword args để đảm bảo đúng thứ tự
                 try:
                     self.fire_alert_gauge.remove(
+                        alert.alert_id,
+                        alert.device_id,
+                        str(alert.latitude),
+                        str(alert.longitude),
+                        alert.location,
+                        alert.detection_class,
+                        alert.detected_at,
+                        alert.image_url
+                    )
+                    self.fire_alert_frames_gauge.remove(
                         alert.alert_id,
                         alert.device_id,
                         str(alert.latitude),

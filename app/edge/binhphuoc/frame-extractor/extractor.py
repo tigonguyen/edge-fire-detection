@@ -61,7 +61,7 @@ def main():
     print(f"Broker: {MQTT_BROKER}:{MQTT_PORT}")
     print(f"Source Dir: {VIDEO_DIR}")
     
-    video_files = glob.glob(os.path.join(VIDEO_DIR, "hoanglienson*.mp4"))
+    video_files = glob.glob(os.path.join(VIDEO_DIR, "*.mp4"))
     if not video_files:
         print(f"[ERROR] No .mp4 files found in {VIDEO_DIR}")
         return

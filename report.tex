@@ -26,11 +26,11 @@ At the edge node (e.g., Binh Phuoc), the PyTorch inference engine processes fram
 The Cloud-native Exporter subscribes to the MQTT broker and maps incoming payloads to the Prometheus telemetry stack. When a fire payload arrives:
 \begin{enumerate}
     \item \textbf{Initial Alert}: The Exporter logs an active alert, dispatches a Telegram notification containing the captured frame, and plots a pinpoint on the Grafana Geomap.
-    \item \textbf{Cooldown Window}: The Exporter enters a strictly enforced 120-second (2-minute) cooldown window for that specific camera location. Any subsequent fire payloads received from this camera within this window will \textbf{not} trigger a Telegram dispatch.
+    \item \textbf{Cooldown Window}: The Exporter enters a strictly enforced 30-second cooldown window for that specific camera location. Any subsequent fire payloads received from this camera within this window will \textbf{not} trigger a Telegram dispatch.
 \end{enumerate}
 
 \section{Dynamic Visual Emphasis (Grafana Integration)}
-Although Telegram notifications are suppressed during the 120-second window, the telemetry data is not discarded. Instead, the Exporter intercepts the silent payloads and increments an internal tracking gauge (\texttt{fire\_frames\_count}).
+Although Telegram notifications are suppressed during the 30-second window, the telemetry data is not discarded. Instead, the Exporter intercepts the silent payloads and increments an internal tracking gauge (\texttt{fire\_frames\_count}).
 
 This metric is exported to Prometheus and queried by the Grafana Geomap dashboard. The size of the red indicator dot on the Geomap is dynamically bound to this count metric. Consequently:
 \begin{itemize}

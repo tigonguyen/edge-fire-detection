@@ -35,6 +35,12 @@ model = None
 class_names = []
 last_alert_time = {}
 
+LOCATIONS = {
+    "hoanglienson": {"lat": 22.3964, "lon": 103.8200, "name": "Rừng quốc gia Hoàng Liên - Sa Pa, Lào Cai", "region": "north"},
+    "bachma": {"lat": 16.0167, "lon": 107.8667, "name": "Vườn quốc gia Bạch Mã - Thừa Thiên Huế", "region": "central"},
+    "dalat": {"lat": 11.8333, "lon": 108.4333, "name": "Rừng thông Đà Lạt - Lâm Đồng", "region": "south"}
+}
+
 def load_model():
     global model, class_names
     
@@ -47,7 +53,7 @@ def load_model():
     
     class_names = checkpoint.get('class_names', ['fire', 'normal'])
     num_classes = len(class_names)
-    model_name = "efficientnet_b0" # Checkpoint trained as B0
+    model_name = checkpoint.get('model_name', "efficientnet_lite0") # Try reading from checkpoint, default to lite0
     
     print(f"Rebuilding architecture: {model_name} (Classes: {num_classes})")
     model = timm.create_model(model_name, pretrained=False, num_classes=num_classes)
@@ -105,16 +111,18 @@ def on_message(client, userdata, msg):
         _, buffer = cv2.imencode('.jpg', frame_bgr)
         b64_img = base64.b64encode(buffer.tobytes()).decode("utf-8")
         
+        loc_data = LOCATIONS.get(camera_id, LOCATIONS["hoanglienson"])
+        
         payload = {
             "alert_id": alert_id,
             "device_id": camera_id,
             "timestamp": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
             "location": {
-                "lat": 22.3964, # Mock coordinates for Binh Phuoc
-                "lon": 103.8200,
-                "name": "Rừng quốc gia Hoàng Liên"
+                "lat": loc_data["lat"],
+                "lon": loc_data["lon"],
+                "name": loc_data["name"]
             },
-            "region": "north",
+            "region": loc_data["region"],
             "detections": [{"class": "fire", "confidence": confidence}],
             "confidence_max": confidence,
             "status": "active",

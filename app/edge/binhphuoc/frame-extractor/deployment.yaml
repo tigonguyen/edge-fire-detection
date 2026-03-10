@@ -21,8 +21,8 @@ spec:
     spec:
       containers:
         - name: extractor
-          image: fire-frame-extractor:latest
-          imagePullPolicy: IfNotPresent
+          image: fire-extractor-python:v2
+          imagePullPolicy: Never
           env:
             - name: MQTT_BROKER
               value: mqtt-broker-binhphuoc.default.svc

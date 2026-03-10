@@ -29,7 +29,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "fire_alert_info",
+          "expr": "fire_alert_frames_count",
           "format": "table",
           "instant": true,
           "legendFormat": "",
@@ -168,7 +168,9 @@
         "justifyMode": "center",
         "orientation": "auto",
         "reduceOptions": {
-          "calcs": ["lastNotNull"],
+          "calcs": [
+            "lastNotNull"
+          ],
           "fields": "",
           "values": false
         },
@@ -227,7 +229,9 @@
         "justifyMode": "center",
         "orientation": "auto",
         "reduceOptions": {
-          "calcs": ["lastNotNull"],
+          "calcs": [
+            "lastNotNull"
+          ],
           "fields": "",
           "values": false
         },
@@ -278,7 +282,9 @@
         "justifyMode": "center",
         "orientation": "auto",
         "reduceOptions": {
-          "calcs": ["lastNotNull"],
+          "calcs": [
+            "lastNotNull"
+          ],
           "fields": "",
           "values": false
         },
@@ -329,7 +335,9 @@
         "justifyMode": "center",
         "orientation": "auto",
         "reduceOptions": {
-          "calcs": ["lastNotNull"],
+          "calcs": [
+            "lastNotNull"
+          ],
           "fields": "",
           "values": false
         },
@@ -520,7 +528,9 @@
         "cellHeight": "sm",
         "footer": {
           "show": true,
-          "reducer": ["count"],
+          "reducer": [
+            "count"
+          ],
           "countRows": true
         }
       },
@@ -564,9 +574,18 @@
                 "value": {
                   "mode": "absolute",
                   "steps": [
-                    {"color": "yellow", "value": null},
-                    {"color": "orange", "value": 0.7},
-                    {"color": "red", "value": 0.85}
+                    {
+                      "color": "yellow",
+                      "value": null
+                    },
+                    {
+                      "color": "orange",
+                      "value": 0.7
+                    },
+                    {
+                      "color": "red",
+                      "value": 0.85
+                    }
                   ]
                 }
               }
@@ -649,7 +668,10 @@
         "legend": {
           "displayMode": "table",
           "placement": "right",
-          "values": ["value", "percent"]
+          "values": [
+            "value",
+            "percent"
+          ]
         },
         "pieType": "donut"
       },
@@ -733,7 +755,9 @@
         "legend": {
           "displayMode": "table",
           "placement": "right",
-          "values": ["value"]
+          "values": [
+            "value"
+          ]
         },
         "pieType": "donut"
       }
@@ -801,8 +825,14 @@
         "defaults": {
           "thresholds": {
             "steps": [
-              {"color": "red", "value": null},
-              {"color": "green", "value": 1}
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
             ]
           }
         }
@@ -870,7 +900,11 @@
   ],
   "refresh": "10s",
   "schemaVersion": 38,
-  "tags": ["fire-detection", "geomap", "vietnam"],
+  "tags": [
+    "fire-detection",
+    "geomap",
+    "vietnam"
+  ],
   "templating": {
     "list": [
       {

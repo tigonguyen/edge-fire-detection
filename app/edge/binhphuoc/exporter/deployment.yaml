@@ -32,7 +32,7 @@ spec:
         - name: SIMULATE_FIRE
           value: "false"
         - name: ALERT_COOLDOWN_SECONDS
-          value: "120"
+          value: "30"
         # Dummy values to prevent crashes if Telegram alerts are enabled in the Python code
         - name: TELEGRAM_BOT_TOKEN
           value: "8696341608:AAFc0dNq_FDS-_7IeyZA8x8UIollLf0tugw"
