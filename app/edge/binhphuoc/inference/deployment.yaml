@@ -18,67 +18,34 @@ spec:
         app: inference
         tier: edge
         location: binhphuoc
-      annotations:
-        prometheus.io/scrape: "true"
-        prometheus.io/port: "9090"
     spec:
-
-      nodeSelector:
-        region: binhphuoc
-      initContainers:
-        - name: model-init
-          image: busybox:1.36
-          command: ["sh", "-c"]
-          args:
-            - |
-              echo "Downloading model from model-server..."
-              wget -O /model/fire_detection.onnx \
-                http://model-server.default.svc:8000/model
-              echo "Model ready."
-          volumeMounts:
-            - name: model-vol
-              mountPath: /model
 
       containers:
         - name: inference
-          image: fire-inference:latest
+          image: fire-inference-python:latest
           imagePullPolicy: IfNotPresent
           env:
-            - name: MQTT_HOST
+            - name: MQTT_BROKER
               value: mqtt-broker-binhphuoc.default.svc
-            - name: MODEL_PATH
-              value: /model/fire_detection.onnx
-            - name: METRICS_PORT
-              value: "9090"
-            - name: CLASS_NAMES
-              value: "fire,normal"
-          ports:
-            - containerPort: 9090
-              name: metrics
-          volumeMounts:
-            - name: model-vol
-              mountPath: /model
-              readOnly: true
+            - name: MQTT_PORT
+              value: "1883"
+            - name: INTERVAL_SECONDS
+              value: "30"
+            - name: PYTHONUNBUFFERED
+              value: "1"
           resources:
             limits:
-              memory: 512Mi
-              cpu: "1"
+              memory: 128Mi
+              cpu: "250m"
             requests:
-              memory: 256Mi
-              cpu: 250m
-          readinessProbe:
-            httpGet:
-              path: /metrics
-              port: 9090
-            initialDelaySeconds: 5
-            periodSeconds: 10
-          livenessProbe:
-            httpGet:
-              path: /metrics
-              port: 9090
-            initialDelaySeconds: 10
-            periodSeconds: 30
-
+              memory: 64Mi
+              cpu: "100m"
+          volumeMounts:
+            - name: model-vol
+              mountPath: /model/fire_detection.onnx
+              subPath: fire_detection.onnx
+              readOnly: true
       volumes:
         - name: model-vol
-          emptyDir: {}
+          configMap:
+            name: edge-model-config

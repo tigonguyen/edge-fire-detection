@@ -13,6 +13,8 @@ spec:
     matchLabels:
       app: frame-extractor
       location: binhphuoc
+  strategy:
+    type: Recreate
   template:
     metadata:
       labels:
@@ -20,8 +22,6 @@ spec:
         tier: devices
         location: binhphuoc
     spec:
-      nodeSelector:
-        region: binhphuoc
       containers:
         - name: extractor
           image: fire-frame-extractor:latest
@@ -38,11 +38,20 @@ spec:
           volumeMounts:
             - name: config
               mountPath: /config
+            - name: local-video
+              mountPath: /videos
           resources:
             limits:
-              memory: 128Mi
+              memory: 256Mi
               cpu: 500m
+            requests:
+              memory: 128Mi
+              cpu: 100m
       volumes:
         - name: config
           configMap:
             name: frame-sources-binhphuoc
+        - name: local-video
+          hostPath:
+            path: /Users/tigonguyen/Documents/DevOps/repos/personal-projects/edge-fire-detection
+            type: Directory

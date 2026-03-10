@@ -19,12 +19,10 @@ spec:
         tier: edge
         location: binhphuoc
     spec:
-      nodeSelector:
-        region: binhphuoc
       containers:
         - name: mosquitto
-          image: edge-mqtt-broker:latest
-          imagePullPolicy: Never
+          image: eclipse-mosquitto:2
+          imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 1883
               name: mqtt

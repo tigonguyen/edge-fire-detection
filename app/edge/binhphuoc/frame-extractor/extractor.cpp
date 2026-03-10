@@ -275,9 +275,6 @@ int main() {
 
     // Start background thread for MQTT loops
     mosquitto_loop_start(g_mosq);
-    
-    // Give Mosquitto background thread time to receive CONNACK before OpenCV hogs CPU
-    std::this_thread::sleep_for(std::chrono::seconds(1));
 
     std::vector<std::thread> workers;
     
