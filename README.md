@@ -122,7 +122,7 @@ Wait approximately 30-45 seconds for Kubernetes to provision all 7 independent s
 Once the `deploy-local.sh` completion message appears, inspect the Edge inference engine telemetry streaming in real-time off the internal MQTT bus using kubectl:
 
 ```bash
-kubectl logs -l app=edge-fire-inference -f
+kubectl logs -l app=inference -f
 ```
 
 *(Expected output showing parallel regional evaluation)*

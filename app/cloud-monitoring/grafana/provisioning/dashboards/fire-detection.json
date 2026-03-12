@@ -75,8 +75,8 @@
                 "size": {
                   "field": "Value",
                   "fixed": 10,
-                  "max": 20,
-                  "min": 5
+                  "max": 50,
+                  "min": 10
                 },
                 "symbol": {
                   "fixed": "img/icons/marker/circle.svg",

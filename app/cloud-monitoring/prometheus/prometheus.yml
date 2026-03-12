@@ -25,9 +25,9 @@ scrape_configs:
       - targets: ['localhost:9090']
 
   # Fire Detection Exporter
-  # Container name: fire-exporter trong network: fire-detection-network
+  # Container name: edge-fire-exporter
   - job_name: 'fire_detection'
     scrape_interval: 10s
     static_configs:
-      - targets: ['exporter-binhphuoc.default.svc:8000']
+      - targets: ['edge-fire-exporter.default.svc:8000']
     metrics_path: /metrics

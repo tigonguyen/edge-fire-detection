@@ -91,7 +91,15 @@ def on_message(client, userdata, msg):
     
     elapsed_ms = (time.time() - t0) * 1000.0
     detection_class = class_names[pred_class_idx]
+    
+    # EfficientNet-Lite0 is a smaller model and struggles with fog (dalat). 
+    # We enforce a strict 0.85 threshold to filter out false smoke positives.
+    CONFIDENCE_THRESHOLD = float(os.getenv("CONFIDENCE_THRESHOLD", "0.85"))
+    
     is_fire = (detection_class == "fire")
+    if is_fire and confidence < CONFIDENCE_THRESHOLD:
+        is_fire = False
+        detection_class = "normal (suppressed)"
     
     prefix = "🔥 " if is_fire else "🌲 "
     print(f"[{camera_id}] {prefix}{detection_class.upper()} conf={confidence:.3f} (latency={elapsed_ms:.1f}ms)")

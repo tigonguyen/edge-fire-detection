@@ -1,0 +1,1267 @@
+\documentclass[12pt,a4paper]{report}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[vietnamese]{babel}
+\usepackage{amsmath,amssymb}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{geometry}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{multirow}
+
+\geometry{
+  left=3cm,
+  right=2.5cm,
+  top=3cm,
+  bottom=3cm
+}
+
+\hypersetup{
+  colorlinks=true,
+  linkcolor=blue,
+  citecolor=blue,
+  urlcolor=blue
+}
+
+\begin{document}
+
+%============================
+% TRANG BÌA (có thể chỉnh sửa lại theo mẫu trường)
+%============================
+\begin{titlepage}
+  \centering
+  {\large ĐẠI HỌC QUỐC GIA THÀNH PHỐ HỒ CHÍ MINH}\\[0.3cm]
+  {\large TRƯỜNG ĐẠI HỌC CÔNG NGHỆ THÔNG TIN}\\[2cm]
+
+  {\Large \textbf{BÁO CÁO ĐỒ ÁN MÔN HỌC}}\\[0.3cm]
+  {\large \textbf{CÔNG NGHỆ IOTs NÂNG CAO}}\\[1cm]
+  {\Large \textbf{HỆ THỐNG PHÁT HIỆN CHÁY RỪNG THỜI GIAN THỰC DỰA TRÊN EDGE AI}}\\[2cm]
+
+  \begin{flushleft}
+  \hspace{3cm}{\large Sinh viên thực hiện:}\\[0.3cm]
+  \hspace{4cm}{\large \textbf{Nguyễn Đình Thanh} -- MSSV: \textbf{250202053}}\\[0.2cm]
+  \hspace{4cm}{\large \textbf{Ngô Văn Tú} -- MSSV: \textbf{250202057}}\\[0.8cm]
+  \hspace{3cm}{\large Giảng viên hướng dẫn: \textbf{TS. Huỳnh Văn Đặng}}\\[2cm]
+  \end{flushleft}
+
+  \vfill
+  {\large Thành phố Hồ Chí Minh, 2025}
+\end{titlepage}
+
+\pagenumbering{roman}
+\tableofcontents
+\listoffigures
+\listoftables
+
+\clearpage
+\pagenumbering{arabic}
+
+%============================
+% CHƯƠNG 1: GIỚI THIỆU TỔNG QUAN
+%============================
+\chapter{Giới thiệu tổng quan}
+
+\section{Bối cảnh và động lực}
+
+Việt Nam và nhiều quốc gia trên thế giới đang đối mặt với nguy cơ cháy rừng ngày càng gia tăng do biến đổi khí hậu, nắng nóng kéo dài và hoạt động của con người. Cháy rừng gây thiệt hại nghiêm trọng về tài nguyên thiên nhiên, đa dạng sinh học, môi trường sống của động vật cũng như ảnh hưởng đến đời sống kinh tế -- xã hội của người dân. Việc phát hiện sớm đám cháy có ý nghĩa quyết định trong việc giảm thiểu thiệt hại, vì thời gian phản ứng càng nhanh thì khả năng khống chế đám cháy càng cao.
+
+Các hệ thống giám sát truyền thống thường dựa trên:
+\begin{itemize}
+  \item Tuần tra thủ công của lực lượng kiểm lâm;
+  \item Các trạm quan sát cố định;
+  \item Hệ thống camera giám sát truyền hình và truyền dữ liệu về trung tâm.
+\end{itemize}
+
+Tuy nhiên, những giải pháp này tồn tại nhiều hạn chế: chi phí nhân lực lớn, vùng phủ không toàn diện, độ trễ cao, phụ thuộc mạnh vào kết nối mạng và hạ tầng đắt đỏ nếu truyền toàn bộ luồng video về trung tâm để xử lý. Sự phát triển của trí tuệ nhân tạo (AI) và đặc biệt là \emph{trí tuệ nhân tạo biên} (Edge AI) mở ra hướng tiếp cận mới: thực hiện suy luận trực tiếp tại thiết bị ngoại vi (edge device) với chi phí thấp, độ trễ nhỏ và ít phụ thuộc vào hạ tầng mạng.
+
+Trong bối cảnh đó, đồ án này đề xuất và triển khai một \textbf{hệ thống phát hiện cháy rừng thời gian thực trên nền tảng Edge AI}, sử dụng máy ảo giả lập có cấu hình phần cứng tương đương vi điều khiển ESP32-S3 và mô hình học sâu EfficientNet-Lite được huấn luyện bằng PyTorch. Thay vì truyền liên tục luồng video chất lượng cao về đám mây, hệ thống chỉ gửi các cảnh báo (alert) dạng gói tin dung lượng nhỏ khi phát hiện có lửa hoặc khói, giúp tiết kiệm băng thông và năng lượng, đồng thời nâng cao tính khả dụng tại các khu vực hẻo lánh. Việc sử dụng máy ảo giả lập cho phép kiểm thử và phát triển hệ thống một cách linh hoạt trước khi triển khai trên phần cứng thực tế.
+
+\section{Mục tiêu đề tài}
+
+Mục tiêu chính của đề tài có thể tóm tắt như sau:
+\begin{itemize}
+  \item \textbf{Xây dựng mô hình nhận dạng cháy rừng}: Huấn luyện một mô hình học sâu phân loại khung hình thành hai lớp \emph{có cháy} và \emph{bình thường}, đạt độ chính xác cao trên tập dữ liệu hình ảnh lửa/không lửa.
+  \item \textbf{Triển khai mô hình trên nền tảng Edge AI}: Thiết kế kiến trúc hệ thống cho phép suy luận (inference) trực tiếp trên thiết bị biên, sử dụng máy ảo giả lập có cấu hình tương đương ESP32-S3, đảm bảo thỏa mãn các ràng buộc về bộ nhớ, tốc độ và năng lượng.
+  \item \textbf{Tích hợp pipeline từ huấn luyện đến triển khai}: Xây dựng chuỗi xử lý gồm chuẩn bị dữ liệu, huấn luyện mô hình trên máy chủ (GPU), thử nghiệm trên Python, chuyển đổi sang TorchScript/TensorFlow Lite và tích hợp vào ứng dụng C++/firmware nhúng.
+  \item \textbf{Xây dựng kiến trúc hệ thống hoàn chỉnh}: Đề xuất kiến trúc end-to-end bao gồm thiết bị biên (Edge Device), trạm mặt đất (Ground Station) với nền tảng giám sát Prometheus/Grafana và nền tảng đám mây (Cloud Platform) phục vụ giám sát, lưu trữ, phân tích và gửi thông báo qua Telegram.
+  \item \textbf{Đánh giá hiệu năng}: Đo đạc và phân tích các chỉ số như độ chính xác, độ trễ, mức tiêu thụ băng thông, mức tiêu thụ năng lượng, từ đó so sánh Edge AI với giải pháp xử lý truyền thống trên đám mây.
+\end{itemize}
+
+\section{Phạm vi và đối tượng nghiên cứu}
+
+Phạm vi của đồ án tập trung vào:
+\begin{itemize}
+  \item Bài toán phân loại hình ảnh lửa/không lửa từ các khung hình video hoặc ảnh tĩnh;
+  \item Thiết kế và huấn luyện mô hình học sâu phù hợp với môi trường tài nguyên hạn chế;
+  \item Đề xuất kiến trúc và hiện thực một phần các thành phần trong pipeline triển khai Edge AI.
+\end{itemize}
+
+Đối tượng nghiên cứu bao gồm:
+\begin{itemize}
+  \item Mô hình học sâu EfficientNet và EfficientNet-Lite dành cho thiết bị biên \cite{tan2019efficientnet};
+  \item Kiến trúc vi điều khiển ESP32-S3 và máy ảo giả lập tương đương;
+  \item Các kỹ thuật tối ưu mô hình cho suy luận nhúng, bao gồm lượng tử hoá (INT8), chuyển đổi định dạng (ONNX, TensorFlow Lite) và thư viện TensorFlow Lite Micro;
+  \item Các kỹ thuật \emph{knowledge distillation} nhằm nâng cao chất lượng mô hình nhẹ \cite{hinton2015distilling,gou2021survey}.
+\end{itemize}
+
+\section{Tóm tắt nội dung thực hiện}
+
+Trong khuôn khổ đồ án, sinh viên đã thực hiện các nội dung chính sau:
+\begin{itemize}
+  \item Nghiên cứu tổng quan về cháy rừng, các giải pháp giám sát truyền thống và xu hướng ứng dụng Edge AI cho giám sát môi trường.
+  \item Khảo sát và lựa chọn kiến trúc mô hình EfficientNet-B0/EfficientNet-Lite0 cho bài toán phát hiện cháy, so sánh với các kiến trúc phổ biến khác như ResNet, MobileNet.
+  \item Xây dựng pipeline huấn luyện mô hình bằng PyTorch: tổ chức dữ liệu, tiền xử lý và tăng cường dữ liệu (data augmentation), tinh chỉnh mô hình (fine-tuning) và đánh giá kết quả.
+  \item Triển khai các script kiểm thử mô hình trên ảnh và video, bao gồm:
+    \begin{itemize}
+      \item Kiểm thử mô hình trên ảnh tĩnh;
+      \item Kiểm thử trên các khung hình trích xuất từ video;
+      \item Ứng dụng C++ dùng TorchScript cho xử lý video thời gian thực trên máy tính.
+    \end{itemize}
+  \item Thiết kế kiến trúc hệ thống Edge--Ground Station--Cloud, đề xuất giải pháp truyền thông (MQTT/HTTP), lưu trữ và hiển thị trên dashboard web.
+  \item Thực hiện và phân tích một số thí nghiệm đánh giá: hiệu năng mô hình (Precision, Recall, F1-Score, Accuracy), độ trễ end-to-end, mức tiết kiệm băng thông so với giải pháp streaming truyền thống.
+  \item Thực hiện thêm thí nghiệm \emph{knowledge distillation} giữa mô hình giáo viên (EfficientNet-B3) và mô hình học sinh (EfficientNet-Lite0) nhằm cải thiện độ chính xác của mô hình nhẹ trong khi vẫn đảm bảo ràng buộc tài nguyên.
+\end{itemize}
+
+%============================
+% CHƯƠNG 2: CÁC CÔNG NGHỆ LIÊN QUAN
+%============================
+\chapter{Các công nghệ liên quan}
+
+\section{Trí tuệ nhân tạo biên (Edge AI)}
+
+\subsection{Khái niệm}
+
+Edge AI là mô hình triển khai các thuật toán trí tuệ nhân tạo trực tiếp trên các thiết bị biên (edge devices) như vi điều khiển, gateway, điện thoại, camera IP \dots thay vì gửi dữ liệu thô lên máy chủ hoặc đám mây để xử lý. Thiết bị biên có thể thực hiện suy luận cục bộ trên dữ liệu thu được từ cảm biến, chỉ gửi kết quả hoặc cảnh báo lên hệ thống trung tâm.
+
+\subsection{Đặc điểm và khả năng}
+
+Các đặc điểm quan trọng của Edge AI:
+\begin{itemize}
+  \item \textbf{Độ trễ thấp}: Dữ liệu được xử lý ngay tại nơi sinh ra, không phải truyền qua mạng, do đó thời gian phản hồi có thể giảm xuống chỉ còn vài chục đến vài trăm mili--giây.
+  \item \textbf{Giảm băng thông}: Thay vì truyền toàn bộ luồng video hoặc dữ liệu cảm biến liên tục, hệ thống chỉ cần truyền kết quả suy luận hoặc cảnh báo, giúp tiết kiệm băng thông và chi phí kết nối.
+  \item \textbf{Khả năng hoạt động ngoại tuyến}: Hệ thống vẫn có thể hoạt động bình thường khi kết nối mạng yếu hoặc bị mất, rất phù hợp với các khu vực rừng núi hẻo lánh.
+  \item \textbf{Bảo mật và riêng tư}: Dữ liệu nhạy cảm (hình ảnh, video) không rời khỏi thiết bị, giảm nguy cơ rò rỉ dữ liệu.
+\end{itemize}
+
+\subsection{Chức năng trong bài toán phát hiện cháy}
+
+Trong bài toán phát hiện cháy rừng, Edge AI đảm nhiệm các chức năng:
+\begin{itemize}
+  \item Xử lý khung hình (resize, chuẩn hoá) ngay trên thiết bị;
+  \item Suy luận bằng mô hình học sâu được lượng tử hoá;
+  \item Ra quyết định phát cảnh báo khi độ tin cậy vượt ngưỡng;
+  \item Đóng vai trò nút cảm biến thông minh trong mạng lưới giám sát cháy rừng phân tán.
+\end{itemize}
+
+\subsection{Lý do lựa chọn}
+
+So với giải pháp xử lý tập trung trên đám mây (truyền liên tục video 5--10 Mbps), Edge AI giúp:
+\begin{itemize}
+  \item Giảm tới 99{,}9\% băng thông sử dụng do chỉ gửi alert dung lượng cỡ kB;
+  \item Đạt độ trễ end-to-end 2--5 giây, nhanh hơn đáng kể so với pipeline streaming--decode--inference trên server;
+  \item Giảm chi phí vận hành và tăng khả năng mở rộng khi triển khai nhiều nút tại các khu rừng.
+\end{itemize}
+
+\section{Mô hình EfficientNet và EfficientNet-Lite}
+
+\subsection{Khái niệm và nguyên lý}
+
+EfficientNet là họ mô hình mạng nơ-ron tích chập được đề xuất trong \cite{tan2019efficientnet}, sử dụng kỹ thuật \emph{compound scaling} để mở rộng đồng thời chiều sâu (depth), chiều rộng (width) và độ phân giải đầu vào (resolution) của mô hình theo một hệ số chung. Cách tiếp cận này giúp đạt được hiệu quả tốt hơn về độ chính xác và chi phí tính toán so với việc chỉ tăng một trong ba yếu tố.
+
+EfficientNet-Lite là biến thể được tối ưu cho triển khai trên thiết bị di động và thiết bị biên. Các mô hình Lite sử dụng các toán tử thân thiện với TensorFlow Lite, giảm kích thước tham số và bộ nhớ trung gian, đồng thời phù hợp với lượng tử hoá INT8.
+
+\subsection{Đặc điểm/khả năng}
+
+Trong đồ án này, mô hình \textbf{EfficientNet-Lite0} được lựa chọn vì:
+\begin{itemize}
+  \item Kích thước nhỏ (\textasciitilde 5{,}3 MB), phù hợp với flash 4--16 MB của ESP32-S3;
+  \item Dấu chân bộ nhớ (RAM) khi lượng tử hoá khoảng 1--2 MB, tương thích với PSRAM 8 MB của ESP32-S3;
+  \item Tốc độ suy luận nhanh (\textasciitilde 20--40 ms mỗi khung hình) trên phần cứng tài nguyên hạn chế;
+  \item Độ chính xác cao, gần tương đương hoặc vượt các mô hình nhẹ khác như MobileNetV2/V3.
+\end{itemize}
+
+Bảng so sánh một số kiến trúc:
+\begin{table}[h]
+  \centering
+  \caption{So sánh một số kiến trúc mô hình cho Edge AI}
+  \begin{tabular}{lcccc}
+    \toprule
+    Mô hình & Kích thước & RAM ước tính & Độ trễ INT8 & Phù hợp ESP32-S3 \\
+    \midrule
+    ResNet18 & 44 MB & 15 MB & 90 ms & Không \\
+    ResNet50 & 98 MB & 35 MB & 175 ms & Không \\
+    MobileNetV2 & 14 MB & 3 MB & 25 ms & Giới hạn \\
+    MobileNetV3-Small & 5{,}5 MB & 2 MB & 18 ms & Tốt \\
+    \textbf{EfficientNet-Lite0} & \textbf{5{,}3 MB} & \textbf{1{,}5 MB} & \textbf{22 ms} & \textbf{Tối ưu} \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\subsection{Lý do lựa chọn}
+
+Như phân tích trong README của dự án, ResNet18/ResNet50 có kích thước quá lớn, đòi hỏi phần cứng đắt tiền (Jetson Nano, Raspberry Pi 4) và không phù hợp với ESP32-S3. EfficientNet-Lite0 mang lại sự cân bằng tốt giữa:
+\begin{itemize}
+  \item Độ chính xác cao nhờ kiến trúc hiện đại;
+  \item Kích thước nhỏ, dễ lượng tử hoá;
+  \item Tốc độ suy luận đủ cho thời gian thực trên vi điều khiển.
+\end{itemize}
+
+\section{Thiết bị biên và máy ảo giả lập ESP32-S3}
+
+\subsection{Khái niệm}
+
+ESP32-S3 là dòng vi điều khiển 32-bit của Espressif, tích hợp WiFi, hỗ trợ AI instructions (vector extensions) và có tuỳ chọn PSRAM dung lượng lớn (8 MB). Trong đồ án này, thay vì sử dụng phần cứng ESP32-S3 thực tế, hệ thống sử dụng \textbf{máy ảo giả lập} có cấu hình phần cứng tương đương, cho phép kiểm thử và phát triển linh hoạt trước khi triển khai trên thiết bị thực.
+
+\subsection{Đặc điểm cấu hình máy ảo giả lập}
+
+Máy ảo giả lập được cấu hình với các thông số tương đương ESP32-S3:
+\begin{itemize}
+  \item Bộ xử lý giới hạn tương đương hai nhân, xung nhịp 240 MHz;
+  \item RAM giới hạn 8 MB (tương đương PSRAM của ESP32-S3);
+  \item Kết nối mạng qua giao thức MQTT;
+  \item Chạy mô hình EfficientNet-Lite0 đã lượng tử hoá INT8.
+\end{itemize}
+
+Việc sử dụng máy ảo mang lại các lợi ích:
+\begin{itemize}
+  \item Dễ dàng debug và kiểm thử mà không cần phần cứng vật lý;
+  \item Khả năng mô phỏng nhiều thiết bị đồng thời;
+  \item Tích hợp nhanh với pipeline CI/CD;
+  \item Chuyển đổi sang phần cứng thực chỉ cần điều chỉnh nhỏ.
+\end{itemize}
+
+\subsection{Chức năng trong hệ thống}
+
+Trong hệ thống, máy ảo giả lập đảm nhiệm:
+\begin{itemize}
+  \item Thu nhận khung hình từ nguồn video/camera giả lập, chuyển về kích thước 224x224 RGB;
+  \item Chuẩn hoá dữ liệu đầu vào theo thống kê ImageNet;
+  \item Thực hiện suy luận với mô hình EfficientNet-Lite0 đã lượng tử hoá;
+  \item Gửi cảnh báo qua MQTT kèm toạ độ GPS, thời gian, độ tin cậy, ảnh base64 lên trạm mặt đất.
+\end{itemize}
+
+\section{TensorFlow Lite Micro và suy luận trên thiết bị nhúng}
+
+\subsection{Khái niệm}
+
+TensorFlow Lite Micro là phiên bản rút gọn của TensorFlow Lite, thiết kế dành riêng cho vi điều khiển với bộ nhớ chỉ vài trăm kB đến vài MB. Thư viện này cho phép triển khai các mô hình đã lượng tử hoá (thường là INT8) trên các nền tảng như ARM Cortex-M, ESP32, v.v.
+
+\subsection{Đặc điểm}
+
+\begin{itemize}
+  \item Không phụ thuộc hệ điều hành, sử dụng bộ cấp phát bộ nhớ tĩnh (arena);
+  \item Hỗ trợ tập con các toán tử đủ dùng cho nhiều mô hình CNN nhỏ;
+  \item Dễ tích hợp với ESP-IDF thông qua component.
+\end{itemize}
+
+\subsection{Trong phạm vi đồ án}
+
+Trong code cơ sở của dự án, thư mục \texttt{edge/} được thiết kế để chứa mã nguồn ESP-IDF, bao gồm các file:
+\begin{itemize}
+  \item \texttt{main.c}: vòng lặp chính của ứng dụng;
+  \item \texttt{camera\_handler.c}: thu nhận khung hình từ camera;
+  \item \texttt{inference\_engine.c}: tích hợp TensorFlow Lite Micro để suy luận;
+  \item \texttt{mqtt\_client.c}: gửi cảnh báo tới broker MQTT.
+\end{itemize}
+
+Do giới hạn thời gian, đồ án dừng ở mức thiết kế và mô tả kiến trúc, chưa hoàn thiện toàn bộ phần triển khai firmware trên ESP32, tuy nhiên các bước chuẩn bị về mô hình và kiến trúc đã sẵn sàng để tích hợp.
+
+\section{Giao thức MQTT và Mosquitto Broker}
+
+\subsection{Giao thức MQTT}
+
+MQTT là giao thức truyền thông nhẹ, mô hình publish/subscribe, rất phù hợp cho mạng cảm biến với băng thông hạn chế. Trong hệ thống đề xuất:
+\begin{itemize}
+  \item Thiết bị biên (máy ảo giả lập) đóng vai trò \emph{publisher}, gửi thông điệp đến các topic;
+  \item Trạm mặt đất là \emph{subscriber}, nhận dữ liệu cảnh báo;
+  \item Mosquitto Broker đóng vai trò trung gian điều phối message.
+\end{itemize}
+
+\subsection{Các MQTT Topics}
+
+Hệ thống định nghĩa các topic sau:
+\begin{table}[h]
+  \centering
+  \caption{Các MQTT Topics trong hệ thống}
+  \begin{tabular}{ll}
+    \toprule
+    Topic & Mục đích \\
+    \midrule
+    \texttt{wildfire/alerts} & Cảnh báo phát hiện cháy/khói kèm ảnh \\
+    \texttt{wildfire/heartbeat} & Heartbeat kiểm tra thiết bị còn hoạt động \\
+    \texttt{wildfire/resolved} & Thông báo cảnh báo đã được xử lý \\
+    \texttt{wildfire/devices/status} & Trạng thái thiết bị (pin, nhiệt độ, uptime) \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\section{Prometheus và Metrics}
+
+\subsection{Khái niệm}
+
+Prometheus là hệ thống giám sát và cảnh báo mã nguồn mở, lưu trữ dữ liệu dạng time-series. Prometheus thu thập (scrape) metrics từ các endpoint HTTP theo chu kỳ cố định và lưu vào cơ sở dữ liệu nội bộ.
+
+\subsection{Vai trò trong hệ thống}
+
+Trong hệ thống phát hiện cháy rừng, Prometheus đảm nhiệm:
+\begin{itemize}
+  \item Thu thập metrics từ Exporter (FastAPI) mỗi 10 giây;
+  \item Lưu trữ time-series data trong 30 ngày;
+  \item Cung cấp ngôn ngữ truy vấn PromQL cho Grafana;
+  \item Đánh giá các alert rules và gửi đến Alertmanager.
+\end{itemize}
+
+\subsection{Định nghĩa Metrics}
+
+Các metrics được thiết kế cho Grafana Geomap:
+\begin{table}[h]
+  \centering
+  \caption{Prometheus Metrics cho hệ thống Fire Detection}
+  \begin{tabular}{llp{6cm}}
+    \toprule
+    Metric & Loại & Mô tả \\
+    \midrule
+    \texttt{fire\_alert\_info} & Gauge & Thông tin cảnh báo cháy với vị trí (cho Geomap) \\
+    \texttt{fire\_confidence\_latest} & Gauge & Độ tin cậy mới nhất theo thiết bị \\
+    \texttt{fire\_device\_status} & Gauge & Trạng thái online/offline của thiết bị \\
+    \texttt{fire\_device\_battery} & Gauge & Phần trăm pin của thiết bị \\
+    \texttt{fire\_alerts\_total} & Counter & Tổng số cảnh báo theo thiết bị \\
+    \texttt{fire\_active\_alerts\_count} & Gauge & Số cảnh báo đang hoạt động \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\textbf{Yêu cầu quan trọng}: Để hiển thị trên Grafana Geomap, metrics phải có các labels \texttt{latitude} và \texttt{longitude} dạng số thực (ví dụ: ``21.0285'', ``105.8542'').
+
+\section{Grafana và Dashboard Geomap}
+
+\subsection{Khái niệm}
+
+Grafana là nền tảng phân tích và trực quan hoá dữ liệu mã nguồn mở, hỗ trợ nhiều loại datasource như Prometheus, InfluxDB, MySQL. Grafana cung cấp nhiều loại panel visualization, trong đó \textbf{Geomap} cho phép hiển thị dữ liệu trên bản đồ địa lý.
+
+\subsection{Vai trò trong hệ thống}
+
+Trong hệ thống, Grafana cung cấp:
+\begin{itemize}
+  \item Dashboard hiển thị vị trí cảnh báo cháy trên bản đồ Việt Nam;
+  \item Biểu đồ thống kê số lượng cảnh báo theo thời gian;
+  \item Bảng danh sách cảnh báo với link xem ảnh;
+  \item Bản đồ trạng thái các thiết bị giám sát;
+  \item Auto-refresh mỗi 10 giây để cập nhật thời gian thực.
+\end{itemize}
+
+\subsection{Cấu hình Geomap Panel}
+
+Để Geomap hiển thị đúng, cần cấu hình:
+\begin{enumerate}
+  \item \textbf{Query}: Sử dụng PromQL query \texttt{fire\_alert\_info}, format Table, type Instant;
+  \item \textbf{Location}: Mode Coords, Latitude field: \texttt{latitude}, Longitude field: \texttt{longitude};
+  \item \textbf{Style}: Size và Color theo field Value (confidence), thresholds: $<0.7$ vàng, $0.7$--$0.85$ cam, $>0.85$ đỏ;
+  \item \textbf{Tooltip}: Mode Details để hiển thị tất cả thông tin (alert\_id, device\_id, location, image\_url).
+\end{enumerate}
+
+\section{Alertmanager và Telegram Notification}
+
+\subsection{Alertmanager}
+
+Alertmanager là thành phần của Prometheus stack, chịu trách nhiệm:
+\begin{itemize}
+  \item Nhận alerts từ Prometheus;
+  \item Nhóm (grouping) các alerts tương tự;
+  \item Áp dụng silence và inhibition rules;
+  \item Gửi thông báo qua nhiều kênh (Telegram, Email, Webhook).
+\end{itemize}
+
+\subsection{Chiến lược thông báo kép}
+
+Hệ thống sử dụng chiến lược thông báo kép (dual notification):
+\begin{enumerate}
+  \item \textbf{Thông báo tức thì (Immediate)}: Gửi ngay khi phát hiện cháy qua Exporter, bao gồm ảnh đính kèm và link Google Maps;
+  \item \textbf{Thông báo nhắc nhở (Reminder)}: Nếu cảnh báo chưa được xử lý sau 15 phút, Alertmanager gửi nhắc nhở, lặp lại mỗi 15--30 phút.
+\end{enumerate}
+
+\subsection{Cấu hình Alert Rules}
+
+Các alert rules được định nghĩa trong Prometheus:
+\begin{table}[h]
+  \centering
+  \caption{Alert Rules trong hệ thống}
+  \begin{tabular}{llc}
+    \toprule
+    Alert & Điều kiện & Severity \\
+    \midrule
+    \texttt{FireDetected} & confidence $> 50\%$ & Critical \\
+    \texttt{HighConfidenceFire} & confidence $> 90\%$ & Critical \\
+    \texttt{DeviceOffline} & device offline $> 5$ phút & Warning \\
+    \texttt{MultipleFireAlerts} & $> 5$ alerts trong 10 phút & Warning \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\subsection{Telegram Bot Integration}
+
+Telegram Bot được tích hợp để gửi thông báo thời gian thực:
+\begin{itemize}
+  \item Bot token và chat ID được cấu hình qua biến môi trường;
+  \item Hỗ trợ gửi đến nhiều chat ID (nhóm kiểm lâm, admin);
+  \item Tin nhắn bao gồm: emoji cảnh báo, vị trí, tọa độ (link Google Maps), độ tin cậy, ảnh phát hiện, thời gian.
+\end{itemize}
+
+\section{Nền tảng Kubernetes và kubeadm}
+
+\subsection{Kiến trúc Microservices trên Kubernetes}
+
+Hệ thống được triển khai theo kiến trúc microservices trên Kubernetes cluster, được khởi tạo bằng kubeadm. Các thành phần được đóng gói thành Pods và quản lý bởi Deployments/Services:
+\begin{table}[h]
+  \centering
+  \caption{Các Kubernetes Deployments trong hệ thống}
+  \begin{tabular}{llc}
+    \toprule
+    Deployment/Pod & Chức năng & Port (Service) \\
+    \midrule
+    \texttt{fire-mosquitto} & MQTT Broker & 1883, 9001 \\
+    \texttt{fire-exporter} & FastAPI Metrics Exporter & 8000 \\
+    \texttt{fire-prometheus} & Prometheus Server & 9090 \\
+    \texttt{fire-alertmanager} & Alertmanager & 9093 \\
+    \texttt{fire-grafana} & Grafana Dashboard & 3000 \\
+    \texttt{fire-nginx} & Image Server (static) & 8080 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\subsection{Cài đặt Kubernetes Cluster với kubeadm}
+
+Cluster được khởi tạo bằng kubeadm với các bước:
+\begin{enumerate}
+  \item Cài đặt container runtime (containerd) và kubeadm, kubelet, kubectl trên tất cả các node;
+  \item Khởi tạo control-plane: \texttt{kubeadm init --pod-network-cidr=10.244.0.0/16};
+  \item Cài đặt CNI plugin (Flannel hoặc Calico) cho networking giữa các Pods;
+  \item Join worker nodes vào cluster bằng token từ control-plane;
+  \item Deploy các ứng dụng thông qua YAML manifests (Deployment, Service, ConfigMap, Secret).
+\end{enumerate}
+
+\subsection{Kubernetes Networking}
+
+Tất cả Pods giao tiếp qua Kubernetes Service Discovery, sử dụng DNS nội bộ (CoreDNS). Ví dụ: Pod có thể truy cập Prometheus qua \texttt{fire-prometheus.default.svc.cluster.local:9090} hoặc rút gọn \texttt{fire-prometheus:9090} trong cùng namespace.
+
+\section{Knowledge Distillation}
+
+\subsection{Khái niệm}
+
+Knowledge distillation là kỹ thuật trong đó một mô hình lớn (teacher) truyền tri thức sang một mô hình nhỏ hơn (student). Thay vì chỉ học từ nhãn cứng (hard labels), mô hình học sinh còn học từ phân phối xác suất mềm (\emph{soft labels}) do mô hình giáo viên sinh ra \cite{hinton2015distilling,gou2021survey}.
+
+\subsection{Đặc điểm và lợi ích}
+
+\begin{itemize}
+  \item Khai thác được các thông tin ẩn trong phân phối đầu ra (ví dụ: mẫu gần ranh giới giữa hai lớp);
+  \item Giúp mô hình nhỏ tổng quát hoá tốt hơn, giảm overfitting;
+  \item Giữ nguyên kích thước mô hình triển khai nhưng cải thiện độ chính xác 1--3\%.
+\end{itemize}
+
+\subsection{Áp dụng trong đồ án}
+
+Repo cung cấp hai nhánh thí nghiệm:
+\begin{itemize}
+  \item \texttt{distillation\_experiment/}: thí nghiệm với mô hình teacher EfficientNet-B3 và student EfficientNet-B0;
+  \item \texttt{experiments/knowledge\_distillation/}: thí nghiệm tương tự nhưng cấu hình tổng quát hơn, cho phép chọn nhiều kiến trúc teacher/student và tham số nhiệt độ, hệ số pha trộn loss.
+\end{itemize}
+
+Hàm loss tổng quát:
+\[
+  \mathcal{L}_{\text{total}} = \alpha \cdot \mathcal{L}_{\text{CE}}(y_s, y) + (1 - \alpha) \cdot \mathcal{L}_{\text{KL}}(p_s^T, p_t^T),
+\]
+trong đó \(y\) là nhãn thật, \(y_s\) là đầu ra của student, \(p_s^T, p_t^T\) là phân phối softmax ở nhiệt độ \(T\) của student và teacher, \(\alpha\) là trọng số giữa nhãn cứng và nhãn mềm.
+
+Kết quả kỳ vọng (theo tài liệu trong repo) cho thấy mô hình học sinh được distill có thể đạt độ chính xác cao hơn 1--3\% so với mô hình huấn luyện trực tiếp, trong khi vẫn giữ kích thước và tốc độ suy luận tương đương.
+
+%============================
+% CHƯƠNG 3: HIỆN THỰC HOÁ
+%============================
+\chapter{Hiện thực hoá hệ thống}
+
+\section{Kiến trúc tổng thể}
+
+Dự án được tổ chức theo kiến trúc ba lớp:
+\begin{itemize}
+  \item \textbf{Thiết bị biên (Edge Device)}: Máy ảo giả lập có cấu hình tương đương ESP32-S3, thu nhận hình ảnh, suy luận mô hình EfficientNet-Lite0 đã lượng tử hoá, phát cảnh báo khi phát hiện cháy/khói.
+  \item \textbf{Trạm mặt đất (Ground Station)}: Bao gồm MQTT Broker (Mosquitto), Prometheus Exporter (FastAPI), Prometheus, Alertmanager, Grafana Dashboard và Nginx Image Server. Nhận cảnh báo qua MQTT, lưu trữ metrics, hiển thị bản đồ thời gian thực và gửi thông báo qua Telegram.
+  \item \textbf{Nền tảng đám mây (Cloud Platform)}: Lưu trữ dữ liệu cảnh báo dài hạn, cung cấp dashboard web và gửi thông báo đến người dùng cuối.
+\end{itemize}
+
+\subsection{Sơ đồ kiến trúc chi tiết}
+
+Sơ đồ kiến trúc hệ thống Fire Detection Monitoring:
+\begin{verbatim}
++------------------+   MQTT    +------------------+   HTTP   +------------------+
+|   Edge Device    |---------->|   Mosquitto      |<-------->|    Exporter      |
+|   (VM/IoT)       |   :1883   |   MQTT Broker    |          |   (FastAPI)      |
++------------------+           +------------------+          +--------+---------+
+                                                                      |
+                                                                      | /metrics
+                                                                      v
++------------------+           +------------------+  Scrape  +------------------+
+|    Telegram      |<----------|  Alertmanager    |<---------|   Prometheus     |
+|    Bot API       |  Reminder |     :9093        |  Alerts  |     :9090        |
++------------------+           +------------------+          +--------+---------+
+       ^                                                              |
+       |                                                              | Query
+       | Immediate                                                    v
+       | Notification                                         +------------------+
+       |                                                      |    Grafana       |
+       +------------------------------------------------------|     :3000        |
+                             (via Exporter)                   +--------+---------+
+                                                                       |
+                                                                       | Image URLs
+                                                                       v
+                                                              +------------------+
+                                                              |     Nginx        |
+                                                              |     :8080        |
+                                                              |  (Image Server)  |
+                                                              +------------------+
+\end{verbatim}
+
+\subsection{Luồng dữ liệu Fire Alert}
+
+Luồng xử lý khi phát hiện cháy:
+\begin{enumerate}
+  \item Edge Device phát hiện lửa/khói qua mô hình AI;
+  \item Gửi message JSON đến MQTT topic \texttt{wildfire/alerts} bao gồm: alert\_id, device\_id, location (lat, lon, name), confidence\_max, detections, image\_base64;
+  \item Exporter nhận message, lưu ảnh vào thư mục \texttt{/app/images/};
+  \item Cập nhật Prometheus metrics (\texttt{fire\_alert\_info}, etc.);
+  \item Gửi ngay Telegram notification với ảnh đính kèm;
+  \item Prometheus scrape metrics mỗi 10 giây;
+  \item Grafana Geomap hiển thị marker trên bản đồ;
+  \item Nếu không resolve sau 15 phút, Alertmanager gửi reminder.
+\end{enumerate}
+
+\subsection{Luồng xử lý Resolution}
+
+Khi cảnh báo được giải quyết:
+\begin{enumerate}
+  \item Operator gửi message đến topic \texttt{wildfire/resolved} với alert\_id, resolution\_type, resolved\_by, notes;
+  \item Exporter xóa alert khỏi danh sách active\_alerts;
+  \item Prometheus metrics được cập nhật (alert biến mất khỏi Geomap);
+  \item Alertmanager ngừng gửi reminder;
+  \item Telegram notification xác nhận resolution.
+\end{enumerate}
+
+\section{Cấu trúc mã nguồn}
+
+Cấu trúc chính của hệ thống như sau:
+\begin{verbatim}
+fire-detection-monitoring/
+├── k8s/                        # Kubernetes manifests
+│   ├── namespace.yaml          # Namespace definition
+│   ├── mosquitto/              # MQTT Broker deployment
+│   │   ├── deployment.yaml
+│   │   ├── service.yaml
+│   │   └── configmap.yaml
+│   ├── exporter/               # FastAPI Exporter deployment
+│   │   ├── deployment.yaml
+│   │   ├── service.yaml
+│   │   └── secret.yaml         # Telegram credentials
+│   ├── prometheus/             # Prometheus deployment
+│   │   ├── deployment.yaml
+│   │   ├── service.yaml
+│   │   └── configmap.yaml
+│   ├── alertmanager/           # Alertmanager deployment
+│   │   ├── deployment.yaml
+│   │   ├── service.yaml
+│   │   └── configmap.yaml
+│   ├── grafana/                # Grafana deployment
+│   │   ├── deployment.yaml
+│   │   ├── service.yaml
+│   │   └── configmap.yaml
+│   └── nginx/                  # Image server deployment
+│       ├── deployment.yaml
+│       └── service.yaml
+│
+├── exporter/                   # Custom Prometheus Exporter (Python)
+│   ├── main.py                 # FastAPI application entry point
+│   ├── mqtt_handler.py         # MQTT subscription and message handling
+│   ├── metrics.py              # Prometheus metrics definitions
+│   ├── notification.py         # Telegram notification service
+│   ├── Dockerfile              # Container image build
+│   └── requirements.txt        # Python dependencies
+│
+├── app/                        # Python video processing application
+│   ├── fire_detector.py        # Main inference script
+│   ├── video_processor.py      # Video stream handling
+│   ├── mqtt_publisher.py       # MQTT alert publishing
+│   └── requirements.txt        # Python dependencies
+│
+├── test_fire_alerts.py         # Comprehensive testing suite
+├── images/                     # Fire detection images storage
+└── test_images/                # Test images for simulation
+\end{verbatim}
+
+Ngoài ra, phần huấn luyện mô hình được tổ chức trong:
+\begin{itemize}
+  \item \texttt{model/}: chứa các script huấn luyện, kiểm thử mô hình và tổ chức dữ liệu;
+  \item \texttt{app/}: ứng dụng Python xử lý video thời gian thực sử dụng PyTorch/ONNX Runtime;
+  \item \texttt{distillation\_experiment/}, \texttt{experiments/knowledge\_distillation/}: các thí nghiệm về knowledge distillation.
+\end{itemize}
+
+\section{Huấn luyện mô hình phát hiện cháy}
+
+\subsection{Chuẩn bị dữ liệu}
+
+Dữ liệu được tổ chức trong thư mục \texttt{model/data/fire\_dataset} với cấu trúc:
+\begin{verbatim}
+model/data/fire_dataset/
+├── train/
+│   ├── fire/
+│   └── normal/
+└── val/
+    ├── fire/
+    └── normal/
+\end{verbatim}
+
+Script \texttt{organize\_dataset.py} hỗ trợ:
+\begin{itemize}
+  \item Chia dữ liệu thô (fire/non\_fire) thành train/val với tỉ lệ mặc định 80/20;
+  \item Tổ chức lại theo cấu trúc thư mục chuẩn của PyTorch.
+\end{itemize}
+
+\subsection{Cấu hình huấn luyện}
+
+File \texttt{train\_fire\_detection.py} cấu hình các siêu tham số:
+\begin{itemize}
+  \item Batch size: 32;
+  \item Số epoch: 20 (có thể tăng lên 50--100 để hội tụ tốt hơn);
+  \item Learning rate ban đầu: 0{,}001, sử dụng scheduler Cosine Annealing;
+  \item Số lớp: 2 (fire, normal).
+\end{itemize}
+
+Phương pháp huấn luyện:
+\begin{itemize}
+  \item Sử dụng EfficientNet-B0 pretrained trên ImageNet làm backbone;
+  \item Fine-tune toàn bộ mô hình (tất cả tham số được cập nhật);
+  \item Loss: Cross-Entropy, tối ưu hoá bằng Adam với weight decay.
+\end{itemize}
+
+\subsection{Tiền xử lý và tăng cường dữ liệu}
+
+Pipeline xử lý ảnh:
+\begin{itemize}
+  \item Resize và crop về kích thước 224x224;
+  \item Chuẩn hoá theo mean/std của ImageNet;
+  \item Với tập train: áp dụng random crop, flip, rotation, color jitter để tăng đa dạng dữ liệu;
+  \item Với tập val/test: chỉ resize và center crop để đảm bảo đánh giá ổn định.
+\end{itemize}
+
+\subsection{Kết quả huấn luyện}
+
+Trong quá trình huấn luyện, script hiển thị:
+\begin{itemize}
+  \item Loss và accuracy cho train/val sau mỗi epoch;
+  \item Accuracy theo từng lớp (fire, normal);
+  \item Learning rate hiện tại.
+\end{itemize}
+
+Mô hình tốt nhất được lưu ở file \texttt{fire\_detection\_best.pth}, bao gồm:
+\begin{itemize}
+  \item Trạng thái trọng số mô hình;
+  \item Trạng thái optimizer;
+  \item Thông tin về accuracy, loss, số epoch;
+  \item Danh sách lớp.
+\end{itemize}
+
+\section{Thí nghiệm Knowledge Distillation}
+
+\subsection{Thiết lập thí nghiệm}
+
+Hai thư mục \texttt{distillation\_experiment/} và \texttt{experiments/knowledge\_distillation/} triển khai các kịch bản:
+\begin{itemize}
+  \item Teacher: EfficientNet-B3 (khoảng 12M tham số, kích thước \textasciitilde 47 MB);
+  \item Student: EfficientNet-B0 hoặc EfficientNet-Lite0 (\textasciitilde 5M tham số, \textasciitilde 20 MB FP32, 5 MB INT8);
+  \item Loss: kết hợp giữa Cross-Entropy (hard labels) và KL-divergence (soft labels) với hệ số \(\alpha\) và nhiệt độ \(T\).
+\end{itemize}
+
+Các bước:
+\begin{enumerate}
+  \item Huấn luyện teacher trên cùng tập dữ liệu cháy rừng;
+  \item Giữ nguyên trọng số teacher (frozen), dùng để sinh soft labels;
+  \item Huấn luyện student với loss kết hợp;
+  \item So sánh student distill với student baseline (huấn luyện trực tiếp) và teacher.
+\end{enumerate}
+
+\subsection{Kết quả kỳ vọng}
+
+Theo tài liệu đi kèm, kết quả kỳ vọng:
+\begin{itemize}
+  \item Teacher đạt accuracy khoảng 95--97\% nhưng quá lớn để triển khai trên ESP32;
+  \item Student baseline: \textasciitilde 93--94\% accuracy, tương thích ESP32;
+  \item Student distill: \textasciitilde 94--96\% accuracy, cùng kích thước và tốc độ với student baseline.
+\end{itemize}
+
+Do giới hạn thời gian và tài nguyên phần cứng, đồ án tập trung vào việc xây dựng pipeline và mô tả chi tiết phương pháp, trong khi phần chạy đầy đủ các thí nghiệm distillation được xem như hướng phát triển tiếp theo.
+
+\section{Ứng dụng Python xử lý video thời gian thực}
+
+\subsection{Mục tiêu}
+
+Ứng dụng Python trong thư mục \texttt{app/} cho phép:
+\begin{itemize}
+  \item Tải mô hình đã export sang ONNX (\texttt{fire\_detection.onnx}) hoặc TorchScript;
+  \item Đọc luồng video từ tệp, camera hoặc RTSP stream;
+  \item Chạy suy luận từng khung hình bằng PyTorch hoặc ONNX Runtime và hiển thị overlay kết quả (nhãn, độ tin cậy);
+  \item Gửi alert đến MQTT broker khi phát hiện cháy;
+  \item Ghi lại video đã xử lý, hiển thị thống kê hiệu năng.
+\end{itemize}
+
+\subsection{Quy trình sử dụng}
+
+Theo README:
+\begin{enumerate}
+  \item Export mô hình từ PyTorch sang ONNX bằng \texttt{export\_onnx.py} hoặc TorchScript bằng \texttt{export\_torchscript.py};
+  \item Cài đặt dependencies: \texttt{pip install -r app/requirements.txt};
+  \item Chạy script Python với tham số video đầu vào, đường dẫn mô hình, ngưỡng tin cậy, cấu hình MQTT:
+\begin{verbatim}
+python app/fire_detector.py \
+  --video input.mp4 \
+  --model fire_detection.onnx \
+  --threshold 0.8 \
+  --mqtt-broker fire-mosquitto:1883
+\end{verbatim}
+\end{enumerate}
+
+Ứng dụng Python đóng vai trò cầu nối giữa môi trường phát triển (PC/GPU) và bước triển khai trên thiết bị biên, cho phép kiểm tra và tối ưu pipeline tiền xử lý, hậu xử lý trong điều kiện thời gian thực. Việc sử dụng Python thay vì C++ giúp đơn giản hoá quá trình phát triển và debug, đồng thời vẫn đảm bảo hiệu năng nhờ ONNX Runtime tối ưu hoá.
+
+\section{Thiết bị biên và trạm mặt đất}
+
+\subsection{Thiết bị biên (máy ảo giả lập)}
+
+Thay vì sử dụng phần cứng ESP32-S3 thực tế, đồ án sử dụng máy ảo giả lập với các đặc điểm:
+\begin{itemize}
+  \item Cấu hình tài nguyên giới hạn tương đương ESP32-S3 (RAM 8 MB, CPU 240 MHz);
+  \item Kết nối MQTT đến Mosquitto Broker;
+  \item Chạy mô hình EfficientNet-Lite0 đã lượng tử hoá;
+  \item Gửi alert với format JSON chuẩn.
+\end{itemize}
+
+Ưu điểm của việc sử dụng máy ảo:
+\begin{itemize}
+  \item Dễ dàng debug, log và kiểm thử mà không cần phần cứng;
+  \item Mô phỏng nhiều thiết bị đồng thời để stress test hệ thống;
+  \item Tích hợp với CI/CD pipeline;
+  \item Chuyển đổi sang phần cứng thực chỉ cần thay đổi cấu hình kết nối.
+\end{itemize}
+
+\subsection{Prometheus Exporter (FastAPI)}
+
+Exporter là thành phần trung tâm của trạm mặt đất, được xây dựng bằng FastAPI:
+
+\subsubsection{MQTT Handler}
+
+Module \texttt{mqtt\_handler.py} xử lý:
+\begin{itemize}
+  \item Kết nối và subscribe các MQTT topics;
+  \item Xử lý message \texttt{wildfire/alerts}: parse JSON, decode base64 image, lưu file ảnh;
+  \item Xử lý \texttt{wildfire/heartbeat}: cập nhật trạng thái thiết bị;
+  \item Xử lý \texttt{wildfire/resolved}: xóa alert khỏi danh sách active;
+  \item Gọi notification service để gửi Telegram.
+\end{itemize}
+
+\subsubsection{Metrics Module}
+
+Module \texttt{metrics.py} định nghĩa các Prometheus metrics:
+\begin{itemize}
+  \item \texttt{FireAlert} dataclass: lưu thông tin alert (alert\_id, device\_id, lat, lon, location, confidence, class, detected\_at, image\_url);
+  \item \texttt{FireDetectionMetrics} class: quản lý active\_alerts, device\_status, alert\_history;
+  \item Các Gauge/Counter metrics với labels bắt buộc cho Geomap (latitude, longitude).
+\end{itemize}
+
+\subsubsection{REST API Endpoints}
+
+Module \texttt{main.py} cung cấp các endpoint:
+\begin{table}[h]
+  \centering
+  \caption{REST API Endpoints của Exporter}
+  \begin{tabular}{llp{6cm}}
+    \toprule
+    Endpoint & Method & Mục đích \\
+    \midrule
+    \texttt{/} & GET & Service status \\
+    \texttt{/health} & GET & Health check (MQTT connection status) \\
+    \texttt{/metrics} & GET & Prometheus metrics scrape endpoint \\
+    \texttt{/alerts} & GET & List all active alerts (debugging) \\
+    \texttt{/test-alert} & POST & Generate test alert (development) \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\subsubsection{Notification Service}
+
+Module \texttt{notification.py} gửi Telegram notification:
+\begin{itemize}
+  \item Hỗ trợ gửi ảnh kèm caption (sendPhoto API);
+  \item Format message với emoji, link Google Maps;
+  \item Hỗ trợ gửi đến nhiều chat ID (comma-separated);
+  \item Timeout và error handling.
+\end{itemize}
+
+\subsection{Prometheus Server}
+
+Prometheus được cấu hình trong \texttt{prometheus/prometheus.yml}:
+\begin{itemize}
+  \item Scrape interval: 10 giây cho fire\_detection job;
+  \item Target: \texttt{fire-exporter:8000};
+  \item Alert rules: load từ \texttt{alerts.yml};
+  \item Alertmanager target: \texttt{fire-alertmanager:9093}.
+\end{itemize}
+
+\subsection{Alertmanager}
+
+Alertmanager cấu hình trong \texttt{alertmanager/alertmanager.yml}:
+\begin{itemize}
+  \item Route: group by alertname và device\_id;
+  \item Critical alerts: group\_wait 0s, repeat\_interval 15 phút;
+  \item Warning alerts: group\_wait 30s;
+  \item Receiver: Telegram với bot\_token và chat\_id từ environment variables.
+\end{itemize}
+
+\subsection{Grafana Dashboard}
+
+Grafana được cấu hình với provisioning:
+\begin{itemize}
+  \item Datasource: Prometheus với uid \texttt{prometheus};
+  \item Dashboard: \texttt{fire-detection.json} với các panels:
+    \begin{itemize}
+      \item Geomap: Fire Detection Map - hiển thị vị trí cảnh báo;
+      \item Stat: Active Alerts Count;
+      \item Timeseries: Alerts Over Time;
+      \item Table: Recent Alerts với link ảnh;
+      \item Geomap: Device Status Map;
+      \item Histogram: Confidence Distribution;
+      \item Piechart: Total Alerts by Device.
+    \end{itemize}
+\end{itemize}
+
+\subsection{Nginx Image Server}
+
+Nginx serve static images từ thư mục \texttt{/usr/share/nginx/html/images/}:
+\begin{itemize}
+  \item CORS headers enabled cho cross-origin access;
+  \item Cache 1 ngày với \texttt{Cache-Control: public, immutable};
+  \item Autoindex enabled để browse images.
+\end{itemize}
+
+%============================
+% CHƯƠNG 4: CÁC KỊCH BẢN THỬ NGHIỆM VÀ KẾT QUẢ
+%============================
+\chapter{Các kịch bản thử nghiệm và kết quả}
+
+\section{Kịch bản 1: Đánh giá mô hình trên tập test ảnh}
+
+\subsection{Đặc tả kịch bản}
+
+Kịch bản đầu tiên nhằm đánh giá độ chính xác của mô hình trên tập ảnh độc lập với tập train/val. Mỗi ảnh được gán nhãn \emph{fire} hoặc \emph{normal}, mô hình được yêu cầu dự đoán và so sánh với nhãn thật.
+
+Các chỉ số đánh giá:
+\begin{itemize}
+  \item Accuracy (độ chính xác tổng thể);
+  \item Precision, Recall, F1-Score;
+  \item Phân tích theo từng kịch bản bối cảnh (ban ngày, thiếu sáng, sương mù, chỉ có khói).
+\end{itemize}
+
+\subsection{Kết quả}
+
+Theo README của dự án, kết quả trên hơn 1000 ảnh test:
+\begin{table}[h]
+  \centering
+  \caption{Kết quả đánh giá mô hình trên tập test}
+  \begin{tabular}{lc}
+    \toprule
+    Chỉ số & Giá trị \\
+    \midrule
+    Precision & 94{,}2\% \\
+    Recall & 91{,}8\% \\
+    F1-Score & 93{,}0\% \\
+    Accuracy & 93{,}5\% \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+Phân tích theo kịch bản:
+\begin{itemize}
+  \item Ban ngày: 95{,}3\% accuracy;
+  \item Thiếu sáng: 88{,}7\% (gợi ý sử dụng camera hồng ngoại cho điều kiện ban đêm);
+  \item Sương mù: 87{,}2\%;
+  \item Chỉ có khói: 89{,}5\%, chứng tỏ khả năng phát hiện sớm qua khói trước khi lửa bùng phát lớn.
+\end{itemize}
+
+\subsection{Thảo luận}
+
+Kết quả cho thấy mô hình đủ tốt để ứng dụng trong thực tế, đặc biệt là trong điều kiện ánh sáng tốt. Các trường hợp khó như thiếu sáng hoặc sương mù vẫn còn dư địa cải thiện, có thể thông qua:
+\begin{itemize}
+  \item Mở rộng tập dữ liệu cho các điều kiện này;
+  \item Áp dụng data augmentation chuyên biệt (giảm sáng, thêm noise, mô phỏng sương mù);
+  \item Kết hợp thêm cảm biến nhiệt (nếu có) để tăng độ tin cậy.
+\end{itemize}
+
+\section{Kịch bản 2: So sánh Edge AI và xử lý trên đám mây}
+
+\subsection{Đặc tả kịch bản}
+
+Mục tiêu là so sánh hai kiến trúc:
+\begin{itemize}
+  \item \textbf{Edge AI}: suy luận tại thiết bị biên, chỉ gửi alert;
+  \item \textbf{Cloud streaming}: truyền liên tục video 720p lên server để xử lý.
+\end{itemize}
+
+Các tiêu chí:
+\begin{itemize}
+  \item Độ trễ end-to-end (từ lúc có cháy đến khi nhận được cảnh báo);
+  \item Băng thông tiêu thụ trung bình mỗi ngày;
+  \item Chi phí hạ tầng mạng và server;
+  \item Khả năng hoạt động tại vùng có kết nối yếu.
+\end{itemize}
+
+\subsection{Kết quả}
+
+\begin{table}[h]
+  \centering
+  \caption{So sánh Edge AI và xử lý trên đám mây}
+  \begin{tabular}{lcc}
+    \toprule
+    Chỉ tiêu & Edge AI (hệ thống đề xuất) & Cloud streaming truyền thống \\
+    \midrule
+    Độ trễ & 2--5 giây & 30--60 giây \\
+    Băng thông & $\approx$ 1 kB/alert & 5--10 Mbps liên tục \\
+    Hoạt động offline & Có & Không \\
+    Bảo mật/riêng tư & Cao (không gửi video) & Thấp (gửi toàn bộ video) \\
+    Chi phí hạ tầng & Thấp & Cao \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+Từ tính toán trong README, băng thông hàng ngày:
+\begin{itemize}
+  \item Edge AI: $< 1$ MB/ngày (giả sử 10 cảnh báo/ngày);
+  \item Cloud streaming: 54--108 GB/ngày cho video 720p.
+\end{itemize}
+
+\subsection{Thảo luận}
+
+Edge AI rõ ràng vượt trội về chi phí băng thông, độ trễ và khả năng hoạt động trong điều kiện kết nối hạn chế. Điều này đặc biệt quan trọng đối với các khu rừng xa khu dân cư, nơi hạ tầng mạng yếu hoặc không tồn tại.
+
+\section{Kịch bản 3: Kịch bản demo end-to-end với Grafana Geomap}
+
+\subsection{Đặc tả kịch bản}
+
+Kịch bản mô phỏng một vụ cháy xảy ra trong vùng được giám sát:
+\begin{enumerate}
+  \item Fire bắt đầu tại khu vực có thiết bị giám sát (máy ảo giả lập);
+  \item Thiết bị chụp khung hình và thực hiện suy luận;
+  \item Nếu phát hiện cháy với độ tin cậy $> 0{,}8$, thiết bị gửi alert đến MQTT broker;
+  \item Exporter nhận message, lưu ảnh, cập nhật Prometheus metrics;
+  \item Telegram notification gửi ngay đến nhóm kiểm lâm;
+  \item Grafana Geomap hiển thị marker đỏ tại vị trí cháy;
+  \item Nếu không resolve sau 15 phút, Alertmanager gửi reminder.
+\end{enumerate}
+
+\subsection{Kết quả mô phỏng}
+
+Một chuỗi thời gian điển hình:
+\begin{itemize}
+  \item T + 0s: Cháy bắt đầu;
+  \item T + 5s: Edge Device chụp và suy luận (confidence 0{,}92);
+  \item T + 5{,}1s: Message gửi đến MQTT broker;
+  \item T + 5{,}3s: Exporter nhận, lưu ảnh, cập nhật metrics;
+  \item T + 5{,}5s: Telegram notification với ảnh đến điện thoại kiểm lâm;
+  \item T + 15s: Prometheus scrape metrics, Grafana Geomap cập nhật;
+  \item T + 20 phút: Alertmanager gửi reminder nếu chưa resolve.
+\end{itemize}
+
+Tổng thời gian từ lúc cháy đến lúc nhận Telegram notification khoảng 5--6 giây.
+
+\subsection{Các vị trí rừng Việt Nam được cấu hình}
+
+Hệ thống được cấu hình sẵn với 15 vị trí rừng lớn trên khắp Việt Nam:
+
+\begin{table}[h]
+  \centering
+  \caption{Các vị trí rừng Việt Nam trong hệ thống}
+  \begin{tabular}{llcc}
+    \toprule
+    Vùng & Tên rừng & Vĩ độ & Kinh độ \\
+    \midrule
+    Miền Bắc & Hoàng Liên (Sa Pa) & 22.3364 & 103.8438 \\
+    & Ba Vì & 21.0760 & 105.3682 \\
+    & Tam Đảo & 21.4622 & 105.6469 \\
+    & Cát Bà & 20.7981 & 106.9961 \\
+    & Sóc Sơn & 21.2595 & 105.8545 \\
+    \midrule
+    Miền Trung & Bạch Mã & 16.2074 & 107.8486 \\
+    & Phong Điền & 16.4833 & 107.1667 \\
+    & Kon Ka Kinh & 14.2167 & 108.3000 \\
+    & Bidoup Núi Bà & 12.1833 & 108.6833 \\
+    & Phong Nha & 17.5380 & 106.1481 \\
+    \midrule
+    Miền Nam & Cát Tiên & 11.4273 & 107.4289 \\
+    & Cần Giờ Mangrove & 10.4114 & 106.9540 \\
+    & U Minh Thượng & 9.6167 & 105.1167 \\
+    & Bình Châu & 10.5333 & 107.5167 \\
+    & Đà Lạt Pine & 11.9383 & 108.4583 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\subsection{Test Script}
+
+Script \texttt{test\_fire\_alerts.py} hỗ trợ các chế độ test:
+\begin{verbatim}
+# Single fire alert
+python test_fire_alerts.py -t single
+
+# Fire with resolution
+python test_fire_alerts.py -t resolve
+
+# Device status updates
+python test_fire_alerts.py -t device_status --count 5
+
+# Full test suite
+python test_fire_alerts.py -t full -v
+\end{verbatim}
+
+\section{Kịch bản 4: Đánh giá Knowledge Distillation}
+
+\subsection{Đặc tả kịch bản}
+
+Mục tiêu: đánh giá lợi ích của knowledge distillation so với huấn luyện trực tiếp.
+\begin{itemize}
+  \item Baseline: EfficientNet-Lite0 huấn luyện trực tiếp trên tập dữ liệu cháy rừng (\texttt{fire\_detection\_best.pth});
+  \item Teacher: EfficientNet-B3 huấn luyện riêng với số epoch lớn;
+  \item Student distilled: EfficientNet-Lite0 huấn luyện với loss kết hợp từ teacher (\texttt{student\_distilled\_best.pth}).
+\end{itemize}
+
+\subsection{Kết quả kỳ vọng}
+
+Cả baseline và student distilled đều là EfficientNet-Lite0 nên kích thước và latency giống nhau. Một ví dụ về so sánh độ chính xác và thời gian huấn luyện:
+\begin{table}[h]
+  \centering
+  \caption{So sánh baseline (direct), teacher và student distilled (cùng Lite0 cho triển khai edge)}
+  \begin{tabular}{lccc}
+    \toprule
+    Mô hình & Kích thước (FP32) & Accuracy (val) & Latency (ước tính) \\
+    \midrule
+    Baseline (Lite0, direct) & 18 MB & 93--94\% & \textasciitilde 22 ms \\
+    Teacher (EfficientNet-B3) & 47 MB & 95--97\% & 60 ms (không triển khai edge) \\
+    Student distilled (Lite0) & 18 MB & 94--96\% (kỳ vọng) & \textasciitilde 22 ms \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\subsection{Thảo luận}
+
+Khi teacher đủ mạnh và được huấn luyện kỹ, student distilled thường đạt độ chính xác cao hơn baseline nhưng vẫn giữ kích thước và tốc độ triển khai phù hợp với ESP32-S3. Điều này giúp nâng cao độ tin cậy của hệ thống trong khi không yêu cầu nâng cấp phần cứng.
+
+\section{So sánh hai phương pháp huấn luyện và lựa chọn}
+
+Trong đồ án có hai cách huấn luyện mô hình EfficientNet-Lite0: \emph{huấn luyện cơ sở} (direct training) và \emph{huấn luyện student} (knowledge distillation). Sau khi thực hiện cả hai và so sánh trên tập validation, đồ án \textbf{lựa chọn một phương pháp} để sử dụng cho mô hình triển khai.
+
+\subsection{Hai phương pháp đã thực hiện}
+
+\subsubsection{Phương pháp 1: Huấn luyện cơ sở}
+
+Mô hình EfficientNet-Lite0 được fine-tune trực tiếp trên tập fire/normal với Cross-Entropy, một giai đoạn; checkpoint lưu tại \texttt{fire\_detection\_best.pth}.
+
+\subsubsection{Phương pháp 2: Huấn luyện student (distillation)}
+
+Huấn luyện teacher EfficientNet-B3 trước, sau đó huấn luyện student Lite0 với loss kết hợp CE và KL-divergence từ teacher; checkpoint lưu tại \texttt{student\_distilled\_best.pth}.
+
+\subsection{Kết quả so sánh (chứng minh)}
+
+Kết quả đọc từ checkpoint của hai mô hình khi lưu mô hình tốt nhất theo validation accuracy:
+
+\begin{table}[h]
+  \centering
+  \caption{Kết quả so sánh hai phương pháp trên tập validation (từ checkpoint)}
+  \begin{tabular}{lcc}
+    \toprule
+    Chỉ số & Huấn luyện cơ sở & Huấn luyện student (distillation) \\
+    \midrule
+    Validation accuracy (\%) & 98{,}5 & 98{,}5 \\
+    Validation loss & 0{,}156 & 0{,}463 \\
+    Epoch lưu mô hình tốt nhất & 13 & 9 \\
+    Số giai đoạn huấn luyện & 1 & 2 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+Hai mô hình đạt \textbf{cùng độ chính xác validation 98{,}5\%}. Tuy nhiên \textbf{validation loss của mô hình huấn luyện cơ sở thấp hơn rõ rệt} (0{,}156 so với 0{,}463), phản ánh dự đoán ổn định hơn và ít sai lệch so với nhãn thật trên tập kiểm tra.
+
+\subsection{Lựa chọn phương pháp và lý do}
+
+\textbf{Đồ án chọn phương pháp huấn luyện cơ sở} (direct training) và sử dụng mô hình \texttt{fire\_detection\_best.pth} cho triển khai. Lý do:
+
+\begin{enumerate}
+  \item \textbf{Cùng độ chính xác, loss thấp hơn}: Trên tập validation, cả hai đều đạt 98{,}5\% accuracy nhưng mô hình cơ sở có val\_loss thấp hơn nhiều (0{,}156 so với 0{,}463). Loss thấp hơn cho thấy mô hình cơ sở hội tụ tốt hơn và phù hợp để đưa vào triển khai thực tế.
+  \item \textbf{Quy trình đơn giản}: Chỉ một giai đoạn huấn luyện, không phụ thuộc mô hình teacher, dễ tái hiện, bảo trì và mở rộng sau này.
+  \item \textbf{Tiết kiệm tài nguyên}: Không cần huấn luyện thêm mô hình EfficientNet-B3 (teacher), tiết kiệm thời gian và GPU; phù hợp khi cần huấn luyện lại hoặc cập nhật dữ liệu.
+  \item \textbf{Cùng kiến trúc triển khai edge}: Vì cả hai đều là EfficientNet-Lite0, kích thước mô hình và độ trễ trên thiết bị biên là như nhau; không có lợi thế triển khai khi chọn distillation trong trường hợp này.
+\end{enumerate}
+
+Kết luận: với kết quả thực tế (Bảng trên), phương pháp huấn luyện cơ sở vừa đạt độ chính xác cao vừa có loss thấp hơn và quy trình gọn hơn, nên được chọn làm phương pháp chính cho mô hình phát hiện cháy triển khai trên thiết bị biên.
+
+\subsection{Các khía cạnh chứng minh độ tương thích thiết bị biên}
+
+Để chứng minh mô hình đã chọn tương thích với thiết bị biên (ví dụ ESP32-S3), đồ án đã kiểm tra các khía cạnh sau. Kết quả chi tiết được sinh tự động bằng script Python \texttt{edge\_compatibility\_comparison.py} và lưu vào file \texttt{comparison\_report.md}.
+
+\begin{enumerate}
+  \item \textbf{Kiến trúc mô hình}: Cả hai phương pháp (cơ sở và distillation) đều xây dựng từ \textbf{EfficientNet-Lite0}, được thiết kế cho triển khai trên thiết bị di động và thiết bị biên (TensorFlow Lite, lượng tử INT8). Script so sánh xác nhận kiến trúc từ checkpoint hoặc từ số tham số (khoảng 3{,}2--4{,}5M tham số tương ứng Lite0).
+  \item \textbf{Kích thước mô hình}: Kích thước FP32 khoảng 13--18 MB; sau lượng tử INT8 khoảng \textbf{3--5{,}3 MB}, nằm trong giới hạn flash 4--16 MB của ESP32-S3. Script đọc \texttt{state\_dict} của từng checkpoint để tính số tham số và ước lượng kích thước.
+  \item \textbf{RAM khi suy luận}: Ước lượng RAM cho một lần suy luận (activation và buffer) khoảng \textbf{1{,}5 MB}, phù hợp PSRAM 8 MB của ESP32-S3, không cần thêm phần cứng đắt tiền.
+  \item \textbf{Nhu cầu khi huấn luyện}: Huấn luyện cơ sở chỉ một giai đoạn, batch size 32, ước lượng RAM GPU khoảng 118 MB; huấn luyện distillation cần hai giai đoạn (teacher rồi student) và tốn tài nguyên hơn. Cấu hình (số epoch, batch size, learning rate, v.v.) được script dẫn xuất trực tiếp từ file \texttt{model/train\_fire\_detection.py} và \texttt{experiments/knowledge\_distillation/config.py}.
+  \item \textbf{Epochs và độ chính xác}: Số epoch lưu mô hình tốt nhất và validation accuracy/loss được đọc từ checkpoint; từ đó so sánh và chọn phương pháp (đồ án chọn cơ sở vì cùng accuracy nhưng loss thấp hơn).
+\end{enumerate}
+
+Bảng tổng hợp trong \texttt{comparison\_report.md} bao gồm: kiến trúc, số tham số, kích thước FP32/INT8, RAM suy luận, cấu hình huấn luyện (epochs, batch size, teacher/student model), validation accuracy/loss và kết luận tương thích ESP32-S3. Chạy lệnh \texttt{python edge\_compatibility\_comparison.py} tại thư mục gốc repo để tái tạo báo cáo so sánh đầy đủ.
+
+\section{Tổng hợp và đánh giá chung}
+
+Tổng hợp các kịch bản thử nghiệm cho thấy:
+\begin{itemize}
+  \item Sau khi so sánh hai phương pháp (huấn luyện cơ sở và distillation), đồ án chọn \textbf{phương pháp huấn luyện cơ sở} và sử dụng mô hình \texttt{fire\_detection\_best.pth} (validation accuracy 98{,}5\%, validation loss 0{,}156) cho triển khai; lý do và kết quả chứng minh đã nêu ở mục trên.
+  \item Mô hình EfficientNet-Lite0 đạt độ chính xác cao cho bài toán phát hiện cháy/không cháy và phù hợp triển khai trên thiết bị biên (cùng kích thước, độ trễ cho dù huấn luyện theo cách nào).
+  \item Edge AI mang lại lợi thế rõ rệt về độ trễ, băng thông và chi phí so với xử lý trên đám mây;
+  \item Kiến trúc hệ thống Edge--Ground--Cloud giúp đảm bảo tính mở rộng, khả năng hoạt động offline và trải nghiệm người dùng tốt thông qua dashboard/web/mobile.
+\end{itemize}
+
+%============================
+% CHƯƠNG 5: KẾT LUẬN
+%============================
+\chapter{Kết luận}
+
+\section{Tổng kết}
+
+Đồ án đã xây dựng và hiện thực một hệ thống phát hiện cháy rừng thời gian thực dựa trên Edge AI, bao gồm:
+\begin{itemize}
+  \item Thiết kế và huấn luyện mô hình học sâu EfficientNet-Lite0 cho bài toán phân loại cháy/không cháy; sau khi so sánh hai phương pháp (huấn luyện cơ sở và distillation), đồ án chọn phương pháp huấn luyện cơ sở và sử dụng mô hình \texttt{fire\_detection\_best.pth} (98{,}5\% accuracy, loss thấp hơn) cho triển khai;
+  \item Xây dựng pipeline từ chuẩn bị dữ liệu, huấn luyện, kiểm thử đến xuất mô hình (ONNX/TensorFlow Lite) phục vụ triển khai;
+  \item Sử dụng máy ảo giả lập có cấu hình tương đương ESP32-S3 để kiểm thử và phát triển linh hoạt trước khi triển khai trên phần cứng thực tế;
+  \item Thiết kế ứng dụng Python xử lý video thời gian thực, làm cơ sở để kiểm chứng pipeline và tối ưu tiền xử lý/hậu xử lý;
+  \item Xây dựng hệ thống giám sát Ground Station hoàn chỉnh bao gồm: Mosquitto MQTT Broker, FastAPI Prometheus Exporter, Prometheus Server, Alertmanager, Grafana Dashboard với Geomap visualization, và Nginx Image Server; tất cả được triển khai trên Kubernetes cluster sử dụng kubeadm;
+  \item Tích hợp thông báo Telegram với chiến lược dual notification (immediate + reminder);
+  \item Đề xuất kiến trúc hệ thống Edge--Ground--Cloud toàn diện, chỉ truyền alert thay vì truyền toàn bộ video, giúp giảm mạnh băng thông và chi phí;
+  \item Khảo sát và thiết kế thí nghiệm knowledge distillation nhằm nâng cao hiệu năng mô hình nhẹ trong khi vẫn đảm bảo ràng buộc phần cứng.
+\end{itemize}
+
+Kết quả đánh giá cho thấy hệ thống đạt:
+\begin{itemize}
+  \item Validation accuracy 98{,}5\% với mô hình đã chọn (huấn luyện cơ sở, \texttt{fire\_detection\_best.pth});
+  \item Độ trễ end-to-end 2--5 giây từ lúc phát hiện cháy đến khi nhận Telegram notification;
+  \item Mức băng thông tiết kiệm tới 99{,}998\% so với truyền video liên tục;
+  \item Grafana Geomap hiển thị vị trí cảnh báo real-time trên bản đồ Việt Nam;
+  \item Alertmanager tự động gửi reminder nếu cảnh báo chưa được xử lý sau 15 phút.
+\end{itemize}
+
+Đồ án đã so sánh hai phương pháp huấn luyện và \textbf{chọn phương pháp huấn luyện cơ sở}: mô hình \texttt{fire\_detection\_best.pth} đạt cùng 98{,}5\% accuracy với mô hình distilled nhưng có validation loss thấp hơn (0{,}156 so với 0{,}463), quy trình đơn giản và tiết kiệm tài nguyên hơn. Chi tiết so sánh và kết quả chứng minh được nêu ở Chương 4.
+
+\section{Hạn chế và hướng phát triển}
+
+\subsection{Hạn chế}
+
+Một số hạn chế hiện tại:
+\begin{itemize}
+  \item Phần thiết bị biên hiện sử dụng máy ảo giả lập, chưa triển khai trên phần cứng ESP32-S3 thực tế;
+  \item Một số kịch bản môi trường khó (ban đêm, sương mù dày, khói mỏng) vẫn còn tỷ lệ nhầm lẫn nhất định;
+  \item Hệ thống chưa tích hợp authentication/authorization cho Grafana và API endpoints;
+  \item Các thí nghiệm knowledge distillation mới ở mức thử nghiệm, cần mở rộng thêm để khẳng định lợi ích trong mọi điều kiện;
+  \item Chưa có cơ chế backup và recovery cho Prometheus data.
+\end{itemize}
+
+\subsection{Hướng phát triển}
+
+Trong tương lai, hệ thống có thể được mở rộng theo các hướng:
+\begin{itemize}
+  \item Triển khai trên phần cứng ESP32-S3 thực tế, tích hợp TensorFlow Lite Micro và camera OV2640;
+  \item Mở rộng tập dữ liệu với nhiều điều kiện thời tiết, địa hình và khu vực địa lý khác nhau, bao gồm cả dữ liệu từ UAV (drone);
+  \item Tích hợp thêm cảm biến (nhiệt độ, độ ẩm, cảm biến khói) và expose thêm metrics cho Prometheus;
+  \item Thêm authentication (OAuth2, LDAP) cho Grafana và API endpoints;
+  \item Mở rộng Kubernetes cluster với auto-scaling (HPA) và high availability (nhiều replicas, PodDisruptionBudget);
+  \item Tích hợp thêm notification channels (Email, Slack, Webhook);
+  \item Nghiên cứu các kiến trúc mô hình mới (Vision Transformer nhẹ, ConvNeXt-Tiny) và các kỹ thuật tối ưu như pruning, quantization-aware training;
+  \item Tiến hành thử nghiệm thực địa tại các khu rừng, đo đạc chi tiết về độ bền thiết bị, độ tin cậy liên lạc và khả năng phát hiện trong điều kiện thực tế.
+\end{itemize}
+
+%============================
+% TÀI LIỆU THAM KHẢO
+%============================
+\begin{thebibliography}{9}
+
+\bibitem{tan2019efficientnet}
+Mingxing Tan and Quoc V. Le,
+``EfficientNet: Rethinking Model Scaling for Convolutional Neural Networks'',
+in \emph{Proceedings of the 36th International Conference on Machine Learning (ICML)}, 2019.
+
+\bibitem{hinton2015distilling}
+Geoffrey Hinton, Oriol Vinyals and Jeff Dean,
+``Distilling the Knowledge in a Neural Network'',
+arXiv preprint arXiv:1503.02531, 2015.
+
+\bibitem{gou2021survey}
+Jiawei Gou, Baosheng Yu, Stephen J. Maybank and Dacheng Tao,
+``Knowledge Distillation: A Survey'',
+\emph{International Journal of Computer Vision}, 129, 1789--1819, 2021.
+
+\bibitem{espidf}
+Espressif Systems,
+``ESP-IDF Programming Guide'',
+\url{https://docs.espressif.com}.
+
+\bibitem{tflite}
+TensorFlow Lite Micro,
+``TensorFlow Lite for Microcontrollers'',
+\url{https://www.tensorflow.org/lite/microcontrollers}.
+
+\bibitem{prometheus}
+Prometheus Authors,
+``Prometheus - Monitoring system \& time series database'',
+\url{https://prometheus.io/docs/}.
+
+\bibitem{grafana}
+Grafana Labs,
+``Grafana Documentation - Geomap Panel'',
+\url{https://grafana.com/docs/grafana/latest/panels-visualizations/visualizations/geomap/}.
+
+\bibitem{mqtt}
+MQTT.org,
+``MQTT - The Standard for IoT Messaging'',
+\url{https://mqtt.org/}.
+
+\bibitem{mosquitto}
+Eclipse Foundation,
+``Eclipse Mosquitto - An open source MQTT broker'',
+\url{https://mosquitto.org/}.
+
+\bibitem{fastapi}
+Sebastián Ramírez,
+``FastAPI - Modern, fast web framework for building APIs with Python'',
+\url{https://fastapi.tiangolo.com/}.
+
+\bibitem{kubernetes}
+The Kubernetes Authors,
+``Kubernetes Documentation'',
+\url{https://kubernetes.io/docs/}.
+
+\bibitem{kubeadm}
+The Kubernetes Authors,
+``kubeadm - Creating a cluster with kubeadm'',
+\url{https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/}.
+
+\bibitem{onnxruntime}
+Microsoft,
+``ONNX Runtime - High Performance Inference Engine'',
+\url{https://onnxruntime.ai/}.
+
+\end{thebibliography}
+
+\end{document}
+

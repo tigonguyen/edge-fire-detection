@@ -4,15 +4,14 @@ groups:
     rules:
       # Alert khi phát hiện cháy mới
       - alert: FireDetected
-        expr: fire_alert_info * 100 > 50
+        expr: fire_alert_info > 0.5
         for: 0m
         labels:
           severity: critical
         annotations:
           summary: "Fire detected at {{ $labels.location }}"
-          confidence: "{{ $value | printf \"%.1f\" }}%"
           description: |
-            Fire detected with confidence {{ $value | printf "%.1f" }}%
+            Fire detected with confidence {{ $value | printf "%.2f" }}
             Location: {{ $labels.location }}
             Coordinates: {{ $labels.latitude }}, {{ $labels.longitude }}
             Device: {{ $labels.device_id }}
@@ -20,14 +19,13 @@ groups:
 
       # Alert khi confidence cao
       - alert: HighConfidenceFire
-        expr: fire_alert_info * 100 > 90
+        expr: fire_alert_info > 0.9
         for: 0m
         labels:
           severity: critical
         annotations:
           summary: "HIGH CONFIDENCE fire at {{ $labels.location }}"
-          confidence: '{{ $value | printf "%.1f" }}%'
-          description: 'Confidence: {{ $value | printf "%.1f" }}%'
+          description: 'Confidence: {{ $value | printf "%.2f" }}'
 
       # Alert khi device offline
       - alert: DeviceOffline

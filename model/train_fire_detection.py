@@ -180,9 +180,9 @@ def main():
     print(f"   Batch size: {BATCH_SIZE}")
     print(f"   Classes: {class_names}")
     
-    # Create model (EfficientNet-Lite0 for edge deployment)
-    print(f"\n🤖 Creating EfficientNet-Lite0 model...")
-    model = timm.create_model('efficientnet_lite0', pretrained=True, num_classes=num_classes)
+    # Create model (EfficientNet-B0)
+    print(f"\n🤖 Creating EfficientNet-B0 model...")
+    model = timm.create_model('efficientnet_b0', pretrained=True, num_classes=num_classes)
     model = model.to(device)
     
     total_params = sum(p.numel() for p in model.parameters())
@@ -233,7 +233,7 @@ def main():
         # Save best model
         if val_acc > best_val_acc:
             best_val_acc = val_acc
-            checkpoint_path = 'fire_detection_best.pth'
+            checkpoint_path = 'fire_detection_b0_best.pth'
             torch.save({
                 'epoch': epoch,
                 'model_state_dict': model.state_dict(),
@@ -242,7 +242,7 @@ def main():
                 'val_loss': val_loss,
                 'class_names': class_names,
                 'num_classes': num_classes,
-                'model_name': 'efficientnet_lite0',
+                'model_name': 'efficientnet_b0',
             }, checkpoint_path)
             print(f"  ✅ Saved best model (val_acc: {val_acc:.2f}%)")
         
@@ -255,7 +255,7 @@ def main():
     print(f"{'='*60}")
     print(f"⏱️  Total training time: {total_time/60:.1f} minutes")
     print(f"🎯 Best validation accuracy: {best_val_acc:.2f}%")
-    print(f"💾 Model saved to: fire_detection_best.pth")
+    print(f"💾 Model saved to: fire_detection_b0_best.pth")
     print(f"\n🧪 Next step: Test the model")
     print(f"   python test_trained_model.py")
 
