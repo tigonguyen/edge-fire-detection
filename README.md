@@ -90,68 +90,36 @@ The centralized environment is strictly responsible for telemetry aggregation, t
 
 - An active local Kubernetes orchestrator (Rancher Desktop, Docker Desktop, or Minikube)
 - Configured local storage provisioners
-- `helm 3.x+`
 - `kubectl` 
 - Local Docker Daemon 
+- `Python 3.11+` (For standalone testing without containers - optional)
 
 ---
 
-## ⚙️ Quick Start Guide
+## ⚙️ Local Development Quick Start
 
-### 1. Provision the Cloud Monitoring Base
-We rely on the standard `kube-prometheus-stack` Helm chart. We'll pass in our custom configuration (`prometheus.yaml`) to auto-provision Grafana, Prometheus, and our custom Alert Rules.
+The entire multi-region ecosystem can be instantly scaffolded onto your local machine for rapid prototyping using our automated configuration scripts.
 
-```bash
-# Register the Prometheus community repository
-helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
-helm repo update
-
-# Install the Kube-Prometheus stack combined with our custom values
-helm install kps prometheus-community/kube-prometheus-stack -f app/cloud-monitoring/prometheus.yaml
-
-# Push the custom Grafana Geo-Dashboard via ConfigMap
-kubectl create configmap grafana-dashboard-json \
-  --from-file=fire-detection.json=app/cloud-monitoring/dashboards/fire-detection.json \
-  --dry-run=client -o yaml | kubectl apply -f -
-```
-
-### 2. Compile the Container Images
-The pipeline relies on custom Python applications. You must build these images into your local Docker cache (`--no-cache` recommended during image updates to ensure `.mp4` payloads mount properly).
+### 1. Build the Decentralized Docker Images
+The pipeline relies on heavily customized Python and Alpine configurations for its Edge and Cloud components. Running this script guarantees all 6 required images are unified under the `edge-fire-[component]` naming convention inside your local Docker daemon cache, bypassing the need for an external container registry.
 
 ```bash
-# Build the Frame Extractor Image
-cd app/edge/node/frame-extractor
-docker build -t edge-fire-extractor:latest .
-
-# Build the AI Inference Image
-cd ../inference
-docker build -t edge-fire-inference:latest .
-
-# Build the Cloud Exporter Gateway Image
-cd ../exporter/src
-docker build -t edge-fire-exporter:latest .
+# This cleans up stale images and builds Extractor, Inference, Mqtt, Exporter, Prometheus, AlertManager, and Grafana from source.
+./build-local.sh
 ```
 
-### 3. Deploy the Edge Sites
-Deploy the customized Kubernetes Manifests to spin up the entire pipeline. 
+### 2. Deploy the End-to-End Cluster
+We have abstracted away the complex dependency ordering of spinning up the Cloud aggregators before the Edge subscribers. A single shell script sequentially applies the entire directory tree (`app/cloud-monitoring/` & `app/edge/node/`).
 
 ```bash
-cd ../../../.. # Return to project root
-
-# Spin up internal MQTT
-kubectl apply -f app/edge/node/mqtt/
-
-# Spin up Cloud Gateway
-kubectl apply -f app/edge/node/exporter/
-
-# Spin up AI Engine & Video Extractor (Order matters for Subscriptions!)
-kubectl apply -f app/edge/node/inference/
-kubectl apply -f app/edge/node/frame-extractor/
+./deploy-local.sh
 ```
 
-### 4. Live Verification
+### 3. Live Verification
 
-Wait approximately 30-45 seconds for the `EfficientNet` model to bootstrap. Then, observe the Edge AI telemetry in real-time:
+Wait approximately 30-45 seconds for Kubernetes to provision all 7 independent services and for the Edge AI `EfficientNet` model to bootstrap into VRAM.
+
+Once the `deploy-local.sh` completion message appears, inspect the Edge inference engine telemetry streaming in real-time off the internal MQTT bus using kubectl:
 
 ```bash
 kubectl logs -l app=edge-fire-inference -f
@@ -164,11 +132,19 @@ kubectl logs -l app=edge-fire-inference -f
 > `[dalat] 🌲 NORMAL conf=0.953 (latency=17.0ms)`
 
 #### Visualizing the Outbreak
-Forward the port to the Grafana loadbalancer to interact with the interactive Geomap and Live Alerts Table:
+With everything deployed locally, our predefined K8s `NodePort`/`ClusterIP` services automatically bind to localhost for instantaneous access.
+
+- **Grafana Visualization**: `http://localhost:3000`
+  - *Login credentials*: `admin` / `admin`
+  - This natively provisions a real-time **Geomap Panel**, dynamically fed global coordinates from the Edge Inference payloads showing organic red bubbles expanding according to ongoing wildfire metrics.
+
+- **Prometheus TSDB**: `http://localhost:9090`
+- **Prometheus AlertManager**: `http://localhost:9093`
+- **Exporter Raw Metrics**: `http://localhost:8080/metrics`
+
+### 4. Teardown Sandbox
+Instantly nuke the entire Kubernetes topology, stopping all node processing and releasing memory.
 
 ```bash
-kubectl port-forward svc/kps-grafana 3000:80
+./teardown-local.sh
 ```
-- Navigate to `http://localhost:3000` in your browser.
-- Login with the credentials defined in your `prometheus.yaml` (default: `admin`/`prom-operator`).
-- Open **Dashboards > Fire Detection Monitoring**.
