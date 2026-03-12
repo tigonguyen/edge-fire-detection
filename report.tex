@@ -13,6 +13,7 @@
 \usepackage{longtable}
 \usepackage{array}
 \usepackage{multirow}
+\usepackage{indentfirst}
 
 \geometry{
   left=3cm,
@@ -66,418 +67,105 @@
 %============================
 \chapter{Giới thiệu tổng quan}
 
-\section{Bối cảnh và động lực}
-
-Việt Nam và nhiều quốc gia trên thế giới đang đối mặt với nguy cơ cháy rừng ngày càng gia tăng do biến đổi khí hậu, nắng nóng kéo dài và hoạt động của con người. Cháy rừng gây thiệt hại nghiêm trọng về tài nguyên thiên nhiên, đa dạng sinh học, môi trường sống của động vật cũng như ảnh hưởng đến đời sống kinh tế -- xã hội của người dân. Việc phát hiện sớm đám cháy có ý nghĩa quyết định trong việc giảm thiểu thiệt hại, vì thời gian phản ứng càng nhanh thì khả năng khống chế đám cháy càng cao.
-
-Các hệ thống giám sát truyền thống thường dựa trên:
-\begin{itemize}
-  \item Tuần tra thủ công của lực lượng kiểm lâm;
-  \item Các trạm quan sát cố định;
-  \item Hệ thống camera giám sát truyền hình và truyền dữ liệu về trung tâm.
-\end{itemize}
-
-Tuy nhiên, những giải pháp này tồn tại nhiều hạn chế: chi phí nhân lực lớn, vùng phủ không toàn diện, độ trễ cao, phụ thuộc mạnh vào kết nối mạng và hạ tầng đắt đỏ nếu truyền toàn bộ luồng video về trung tâm để xử lý. Sự phát triển của trí tuệ nhân tạo (AI) và đặc biệt là \emph{trí tuệ nhân tạo biên} (Edge AI) mở ra hướng tiếp cận mới: thực hiện suy luận trực tiếp tại thiết bị ngoại vi (edge device) với chi phí thấp, độ trễ nhỏ và ít phụ thuộc vào hạ tầng mạng.
-
-Trong bối cảnh đó, đồ án này đề xuất và triển khai một \textbf{hệ thống phát hiện cháy rừng thời gian thực trên nền tảng Edge AI}, sử dụng máy ảo giả lập có cấu hình phần cứng tương đương vi điều khiển ESP32-S3 và mô hình học sâu EfficientNet-Lite được huấn luyện bằng PyTorch. Thay vì truyền liên tục luồng video chất lượng cao về đám mây, hệ thống chỉ gửi các cảnh báo (alert) dạng gói tin dung lượng nhỏ khi phát hiện có lửa hoặc khói, giúp tiết kiệm băng thông và năng lượng, đồng thời nâng cao tính khả dụng tại các khu vực hẻo lánh. Việc sử dụng máy ảo giả lập cho phép kiểm thử và phát triển hệ thống một cách linh hoạt trước khi triển khai trên phần cứng thực tế.
-
 \section{Mục tiêu đề tài}
 
-Mục tiêu chính của đề tài có thể tóm tắt như sau:
+Tại Việt Nam, cũng như nhiều quốc gia trên thế giới, nguy cơ cháy rừng đang ngày càng gia tăng do biến đổi khí hậu, nắng nóng kéo dài và các hoạt động của con người. Theo số liệu thống kê trong sáu tháng đầu năm 2024, Việt Nam đã hứng chịu hơn 2.222 vụ cháy, làm thiêu rụi khoảng 529 hecta rừng trên cả nước \cite{vov2024wildfire}, gây thiệt hại nghiêm trọng không chỉ đối với hệ sinh thái vĩ mô mà còn đe dọa trực tiếp đời sống kinh tế -- xã hội, đồng thời góp phần làm gia tăng lượng khí thải CO2. Việc phát hiện sớm đám cháy có ý nghĩa quyết định trong việc giảm thiểu thiệt hại, thời gian phản ứng càng nhanh thì khả năng khống chế đám cháy càng cao và hạn chế tối đa tài nguyên bị thiêu rụi.
+
+Các hệ thống quan trắc và giám sát rừng truyền thống thường dựa trên ba phương pháp chính: tuần tra thủ công của lực lượng kiểm lâm, triển khai các trạm quan sát cố định và dùng hệ thống camera truyền hình mạch kín (CCTV) để truyền toàn bộ dữ liệu video về trung tâm phân tích. Tuy nhiên, các giải pháp truyền thống này bộc lộ rất nhiều hạn chế. Tuần tra thủ công tiêu tốn chi phí nhân lực lớn và vùng phủ hạn chế; camera CCTV đòi hỏi một kết nối mạng ổn định với băng thông mạnh (liên tục 5--10 Mbps) để có thể truyền luồng video về đám mây xử lý, đồng thời độ trễ khi phân tích tập trung trên đám mây rất cao. Khi triển khai tại các khu vực rừng núi hiểm trở và vùng sâu vùng xa, chi phí hạ tầng truyền dẫn mạng trở thành rào cản quá lớn, và độ trễ từ hàng trăm mili-giây đến mức vài phút để gửi luồng mạng làm mất đi ``thời điểm vàng'' để dập lửa.
+
+Sự phát triển mạnh mẽ của Internet of Things (IoT) và đặc biệt là Trí tuệ nhân tạo biên (Edge AI) cung cấp một giải pháp cấp thiết và đột phá. Khác với Cloud AI xử lý trên đám mây, Edge AI nhúng thẳng các mô hình suy luận trí tuệ nhân tạo mạng nơ-ron cục bộ lên các thiết bị ngoại vi tại nơi dữ liệu được sinh ra. Bằng cách thực thi mô hình Deep Learning trên ngay thiết bị biên gần camera, thiết bị camera IoT sẽ chịu trách nhiệm phân tích video tại chỗ thay vì gửi về máy chủ. Các số liệu công nghiệp chỉ ra rằng, Edge AI giúp giảm mức tiêu thụ băng thông mạng xuống từ 70\% đến 95\% \cite{edgeai_bandwidth} vì thiết bị chỉ cần gửi đi các gói tín hiệu báo động dạng siêu dữ liệu định tuyến dung lượng chỉ vài kilobyte, thay vì những đoạn video lớn. Bên cạnh đó, độ trễ phản hồi khi có quyết định suy luận từ một mạng Edge AI có thể hạ xuống dưới mức 50 mili-giây \cite{edgeai_latency}, giúp đưa ra phản ứng tức thì cho các hệ sinh thái IoT bảo vệ rừng.
+
+Từ những thách thức và tiềm năng đó, \textbf{mục tiêu chính} của đồ án này tập trung vào thiết kế, xây dựng và đánh giá chuyên sâu một \textbf{hệ thống phát hiện cháy rừng thời gian thực ứng dụng công nghệ IoT và Edge AI}. Cụ thể, các mục tiêu thành phần bao gồm:
+
 \begin{itemize}
-  \item \textbf{Xây dựng mô hình nhận dạng cháy rừng}: Huấn luyện một mô hình học sâu phân loại khung hình thành hai lớp \emph{có cháy} và \emph{bình thường}, đạt độ chính xác cao trên tập dữ liệu hình ảnh lửa/không lửa.
-  \item \textbf{Triển khai mô hình trên nền tảng Edge AI}: Thiết kế kiến trúc hệ thống cho phép suy luận (inference) trực tiếp trên thiết bị biên, sử dụng máy ảo giả lập có cấu hình tương đương ESP32-S3, đảm bảo thỏa mãn các ràng buộc về bộ nhớ, tốc độ và năng lượng.
-  \item \textbf{Tích hợp pipeline từ huấn luyện đến triển khai}: Xây dựng chuỗi xử lý gồm chuẩn bị dữ liệu, huấn luyện mô hình trên máy chủ (GPU), thử nghiệm trên Python, chuyển đổi sang TorchScript/TensorFlow Lite và tích hợp vào ứng dụng C++/firmware nhúng.
-  \item \textbf{Xây dựng kiến trúc hệ thống hoàn chỉnh}: Đề xuất kiến trúc end-to-end bao gồm thiết bị biên (Edge Device), trạm mặt đất (Ground Station) với nền tảng giám sát Prometheus/Grafana và nền tảng đám mây (Cloud Platform) phục vụ giám sát, lưu trữ, phân tích và gửi thông báo qua Telegram.
-  \item \textbf{Đánh giá hiệu năng}: Đo đạc và phân tích các chỉ số như độ chính xác, độ trễ, mức tiêu thụ băng thông, mức tiêu thụ năng lượng, từ đó so sánh Edge AI với giải pháp xử lý truyền thống trên đám mây.
+  \item \textbf{Cục bộ hóa trí tuệ nhân tạo (Edge Inference)}: Nghiên cứu phương pháp tối ưu hóa và lượng tử hóa các mô hình phân loại hình ảnh học sâu hiện đại để chúng có thể thực thi chính xác cao với bộ nhớ hạn chế và công suất thấp trên các nút biên IoT.
+  \item \textbf{Xây dựng kiến trúc phân tán đa khu vực (Geo-Distributed Edge-Cloud Topology)}: Thiết kế hệ thống mạng IoT phân vùng, nơi các cụm camera giám sát hoạt động độc lập ở nhiều điểm cực khác nhau. Nút biên chỉ thực thi phân tích AI và đẩy duy nhất tín hiệu cảnh báo chứa vị trí bản đồ khi đám cháy bắt đầu hình thành.
+  \item \textbf{Kiểm soát băng thông và Tối ưu độ trễ (Event-Driven Telemetry)}: Phát triển một cơ chế kiểm soát cảnh báo, ngăn chặn các luồng gọi API rác không cần thiết từ thiết bị IoT về đám mây. Đồng thời tính toán được mức độ giảm thiểu áp lực băng thông lên hệ thống Cloud.
+  \item \textbf{Quản trị tự động và Giám sát trực quan (Monitoring and Alerting stack)}: Xây dựng trung tâm điều khiển trạm mặt đất có thể theo dõi tự động hàng ngàn camera. Trạm kết nối qua các nền tảng thời gian thực, có khả năng phân luồng log, xử lý sự kiện báo động khẩn cấp và thiết lập biểu đồ theo dõi mật độ cháy rừng trong một khu vực địa lý.
 \end{itemize}
 
-\section{Phạm vi và đối tượng nghiên cứu}
+\section{Nội dung nghiên cứu}
 
-Phạm vi của đồ án tập trung vào:
-\begin{itemize}
-  \item Bài toán phân loại hình ảnh lửa/không lửa từ các khung hình video hoặc ảnh tĩnh;
-  \item Thiết kế và huấn luyện mô hình học sâu phù hợp với môi trường tài nguyên hạn chế;
-  \item Đề xuất kiến trúc và hiện thực một phần các thành phần trong pipeline triển khai Edge AI.
-\end{itemize}
+Phạm vi chính của đề tài tập trung vào bài toán sử dụng học sâu (Deep Learning) để phân loại hình ảnh lửa và khói từ các khung hình trong video hoặc ảnh tĩnh, hướng tới tính ứng dụng trên các thiết bị biên có cấu hình phần cứng khiêm tốn. Đối tượng nghiên cứu cụ thể là dòng kiến trúc mạng nơ-ron EfficientNet \cite{tan2019efficientnet}, kết hợp với khung phần mềm mã nguồn mở PyTorch trong giai đoạn huấn luyện. Để đưa mô hình vào môi trường nhúng thực tế, đồ án tìm hiểu việc áp dụng kỹ thuật lượng tử hóa (INT8 Quantization) nhằm thu nhỏ kích thước bộ trọng số, sau đó chuyển đổi sang định dạng tiêu chuẩn ONNX \cite{onnxruntime}. Đồ án cũng xem xét và so sánh ngắn gọn ba phương pháp xây dựng mô hình: quá trình huấn luyện mô hình dựa trên mạng phần nhỏ EfficientNet-Lite0 nguyên bản, huấn luyện dựa trên kiến trúc EfficientNet-B0 tiêu chuẩn, và việc áp dụng phương pháp chưng cất tri thức (Knowledge Distillation) \cite{hinton2015distilling, gou2021survey} nhằm cố gắng giữ lại độ ổn định của bản B0 cho bản Lite0. Khía cạnh thử nghiệm này góp phần giúp nhóm hệ thống hóa tài liệu quan sát về sự thiết lập cân bằng giữa giới hạn tài nguyên lưu trữ của các dòng vi điều khiển cỡ nhỏ và mức độ chuẩn xác mà mỗi mô hình có thể đạt được trong các thiết lập giả định.
 
-Đối tượng nghiên cứu bao gồm:
-\begin{itemize}
-  \item Mô hình học sâu EfficientNet và EfficientNet-Lite dành cho thiết bị biên \cite{tan2019efficientnet};
-  \item Kiến trúc vi điều khiển ESP32-S3 và máy ảo giả lập tương đương;
-  \item Các kỹ thuật tối ưu mô hình cho suy luận nhúng, bao gồm lượng tử hoá (INT8), chuyển đổi định dạng (ONNX, TensorFlow Lite) và thư viện TensorFlow Lite Micro;
-  \item Các kỹ thuật \emph{knowledge distillation} nhằm nâng cao chất lượng mô hình nhẹ \cite{hinton2015distilling,gou2021survey}.
-\end{itemize}
+Bên cạnh khía cạnh phân tích thị giác máy tính tại các nút mạng sát thực địa, đề tài cũng từ từ mở rộng phạm vi nghiên cứu thực nghiệm sang việc ứng dụng các khái niệm của hệ thống vi dịch vụ (Microservice architectures) nhằm kiểm soát cơ chế lưu chuyển cảnh báo trong một môi trường phân tán cơ bản. Cụ thể, sau khi dùng thư viện xử lý ảnh nguồn mở OpenCV \cite{opencv} để đọc hình ảnh, thiết bị phần cứng sẽ thử nghiệm đóng gói các thông tin cảnh báo thông qua giao thức truyền nhận MQTT dung lượng thấp trên Mosquitto broker. Toàn bộ cấu trúc các dịch vụ vận hành của mạng lưới được thiết lập chạy gói gọn trong nền tảng Kubernetes, có tích hợp kỹ thuật phân luồng nhãn điều phối tĩnh (nodeSelector) để bước đầu duy trì được sự liền mạch của dòng dữ liệu giữa các máy điện toán tập trung tại trạm điều hành.
 
 \section{Tóm tắt nội dung thực hiện}
 
-Trong khuôn khổ đồ án, sinh viên đã thực hiện các nội dung chính sau:
-\begin{itemize}
-  \item Nghiên cứu tổng quan về cháy rừng, các giải pháp giám sát truyền thống và xu hướng ứng dụng Edge AI cho giám sát môi trường.
-  \item Khảo sát và lựa chọn kiến trúc mô hình EfficientNet-B0/EfficientNet-Lite0 cho bài toán phát hiện cháy, so sánh với các kiến trúc phổ biến khác như ResNet, MobileNet.
-  \item Xây dựng pipeline huấn luyện mô hình bằng PyTorch: tổ chức dữ liệu, tiền xử lý và tăng cường dữ liệu (data augmentation), tinh chỉnh mô hình (fine-tuning) và đánh giá kết quả.
-  \item Triển khai các script kiểm thử mô hình trên ảnh và video, bao gồm:
-    \begin{itemize}
-      \item Kiểm thử mô hình trên ảnh tĩnh;
-      \item Kiểm thử trên các khung hình trích xuất từ video;
-      \item Ứng dụng C++ dùng TorchScript cho xử lý video thời gian thực trên máy tính.
-    \end{itemize}
-  \item Thiết kế kiến trúc hệ thống Edge--Ground Station--Cloud, đề xuất giải pháp truyền thông (MQTT/HTTP), lưu trữ và hiển thị trên dashboard web.
-  \item Thực hiện và phân tích một số thí nghiệm đánh giá: hiệu năng mô hình (Precision, Recall, F1-Score, Accuracy), độ trễ end-to-end, mức tiết kiệm băng thông so với giải pháp streaming truyền thống.
-  \item Thực hiện thêm thí nghiệm \emph{knowledge distillation} giữa mô hình giáo viên (EfficientNet-B3) và mô hình học sinh (EfficientNet-Lite0) nhằm cải thiện độ chính xác của mô hình nhẹ trong khi vẫn đảm bảo ràng buộc tài nguyên.
-\end{itemize}
+Mở đầu cho quy trình thực nghiệm, dựa vào các bài toán tiền đề, nhóm đã chủ động tìm kiếm và hệ thống hóa một tập dữ liệu (dataset) ảnh tương đối đa dạng. Tập dữ liệu này bao gồm các mẫu hình ảnh đặc trưng về các dạng cháy rừng, lửa, khói hòa trộn cùng nền hình ảnh cảnh rừng tĩnh bình thường (không cháy) để phục vụ cho các bước huấn luyện nhằm giúp mô hình nhận diện ra ranh giới phân loại. Qua hệ sinh thái PyTorch, các kỹ thuật bổ trợ như tăng cường sự đa dạng cho tệp dữ liệu (Data Augmentation) cũng được lồng ghép một cách tương đối kĩ lưỡng để tạo thêm dữ kiện đa chiều cho mạng nơ-ron. Trọng số đầu ra của mô hình sau đó được chuyển đổi và tối giản hóa theo định dạng ONNX Runtime, nhằm hạn chế mức chiếm dụng không gian lưu trữ và thích ứng với điều kiện phần cứng của các bo mạch tại nút biên. Nhóm bước đầu cũng đã xây dựng hoàn thiện một nguyên mẫu ứng dụng bằng mã nguồn Python đại diện cho các thiết bị thực địa. Ứng dụng này thử nghiệm thu nhận những luồng video rời rạc ở tần số khung hình thấp giọt trên giây, rồi đi qua một vòng lặp AI cơ sở để trích xuất điểm ảnh bất thường. Kết quả sau đó được đính kèm cùng tọa độ giả định (geo-tagging) tạo thành các thông điệp cảnh báo dưới định dạng chuẩn JSON và gửi ngang qua sóng MQTT về hệ thống quản lý.
+
+Về phía điểm nhận dữ liệu được triển khai trên kết cấu Kubernetes của hệ thống máy chủ, nhóm sử dụng một cấu trúc ứng dụng FastAPI đóng vai trò như cửa ngõ tiếp nhận (gateway). Lớp API này bao gồm một cơ chế trễ lặp thời gian ngắn nhằm mục đích tự động loại bỏ bớt các thông báo trùng lặp dư thừa nếu vùng hỏa hoạn không may kích hoạt nhiều camera tại cùng một vị trí lân cận. Quy trình quản trị trung tâm được nhóm phác họa xoay quanh chức năng của bộ khung công nghệ Prometheus, Grafana, và Alertmanager. Cụ thể, Prometheus sẽ thực hiện nhiệm vụ tập hợp dữ liệu cảnh báo từ cửa ngõ FastAPI định kỳ. Từ nguồn dữ liệu này, Alertmanager sẽ được thiết lập với các giới hạn quy tắc nhằm kiểm định tình huống khẩn cấp, từ đó phát lệnh Webhook qua một kênh điều phối tự động là Telegram. Bằng cách định tuyến chuỗi thông báo Telegram chứa đầy đủ tọa độ lẫn đoạn ảnh tĩnh bằng chứng đính kèm, hệ thống tạo ra một cầu nối thông tin bước đầu tới các thiết bị di động của lực lượng túc trực. Đồng thời, toàn bộ hành trình theo vết sự cố trên mạng lưới cảm biến cũng được quy hoạch trực quan trên giao diện hiển thị Grafana. Hệ sinh thái này được nhóm kết nối chung với tấm bản đồ nền tảng cảnh quốc tế Geomap, cung cấp đồ thị rải rác những chấm đỏ nhấp nháy một cách liền mạch nhằm phản ánh dữ kiện hiện thời, mang đến một định hướng quan sát thiết thực hỗ trợ theo dõi một cấu trúc rừng phân mảnh.
 
 %============================
 % CHƯƠNG 2: CÁC CÔNG NGHỆ LIÊN QUAN
 %============================
 \chapter{Các công nghệ liên quan}
 
-\section{Trí tuệ nhân tạo biên (Edge AI)}
-
-\subsection{Khái niệm}
-
-Edge AI là mô hình triển khai các thuật toán trí tuệ nhân tạo trực tiếp trên các thiết bị biên (edge devices) như vi điều khiển, gateway, điện thoại, camera IP \dots thay vì gửi dữ liệu thô lên máy chủ hoặc đám mây để xử lý. Thiết bị biên có thể thực hiện suy luận cục bộ trên dữ liệu thu được từ cảm biến, chỉ gửi kết quả hoặc cảnh báo lên hệ thống trung tâm.
-
-\subsection{Đặc điểm và khả năng}
-
-Các đặc điểm quan trọng của Edge AI:
-\begin{itemize}
-  \item \textbf{Độ trễ thấp}: Dữ liệu được xử lý ngay tại nơi sinh ra, không phải truyền qua mạng, do đó thời gian phản hồi có thể giảm xuống chỉ còn vài chục đến vài trăm mili--giây.
-  \item \textbf{Giảm băng thông}: Thay vì truyền toàn bộ luồng video hoặc dữ liệu cảm biến liên tục, hệ thống chỉ cần truyền kết quả suy luận hoặc cảnh báo, giúp tiết kiệm băng thông và chi phí kết nối.
-  \item \textbf{Khả năng hoạt động ngoại tuyến}: Hệ thống vẫn có thể hoạt động bình thường khi kết nối mạng yếu hoặc bị mất, rất phù hợp với các khu vực rừng núi hẻo lánh.
-  \item \textbf{Bảo mật và riêng tư}: Dữ liệu nhạy cảm (hình ảnh, video) không rời khỏi thiết bị, giảm nguy cơ rò rỉ dữ liệu.
-\end{itemize}
-
-\subsection{Chức năng trong bài toán phát hiện cháy}
-
-Trong bài toán phát hiện cháy rừng, Edge AI đảm nhiệm các chức năng:
-\begin{itemize}
-  \item Xử lý khung hình (resize, chuẩn hoá) ngay trên thiết bị;
-  \item Suy luận bằng mô hình học sâu được lượng tử hoá;
-  \item Ra quyết định phát cảnh báo khi độ tin cậy vượt ngưỡng;
-  \item Đóng vai trò nút cảm biến thông minh trong mạng lưới giám sát cháy rừng phân tán.
-\end{itemize}
-
-\subsection{Lý do lựa chọn}
-
-So với giải pháp xử lý tập trung trên đám mây (truyền liên tục video 5--10 Mbps), Edge AI giúp:
-\begin{itemize}
-  \item Giảm tới 99{,}9\% băng thông sử dụng do chỉ gửi alert dung lượng cỡ kB;
-  \item Đạt độ trễ end-to-end 2--5 giây, nhanh hơn đáng kể so với pipeline streaming--decode--inference trên server;
-  \item Giảm chi phí vận hành và tăng khả năng mở rộng khi triển khai nhiều nút tại các khu rừng.
-\end{itemize}
-
-\section{Mô hình EfficientNet và EfficientNet-Lite}
-
-\subsection{Khái niệm và nguyên lý}
-
-EfficientNet là họ mô hình mạng nơ-ron tích chập được đề xuất trong \cite{tan2019efficientnet}, sử dụng kỹ thuật \emph{compound scaling} để mở rộng đồng thời chiều sâu (depth), chiều rộng (width) và độ phân giải đầu vào (resolution) của mô hình theo một hệ số chung. Cách tiếp cận này giúp đạt được hiệu quả tốt hơn về độ chính xác và chi phí tính toán so với việc chỉ tăng một trong ba yếu tố.
-
-EfficientNet-Lite là biến thể được tối ưu cho triển khai trên thiết bị di động và thiết bị biên. Các mô hình Lite sử dụng các toán tử thân thiện với TensorFlow Lite, giảm kích thước tham số và bộ nhớ trung gian, đồng thời phù hợp với lượng tử hoá INT8.
-
-\subsection{Đặc điểm/khả năng}
+\section{Nền tảng học sâu và tối ưu hóa hệ thống biên}
 
-Trong đồ án này, mô hình \textbf{EfficientNet-Lite0} được lựa chọn vì:
-\begin{itemize}
-  \item Kích thước nhỏ (\textasciitilde 5{,}3 MB), phù hợp với flash 4--16 MB của ESP32-S3;
-  \item Dấu chân bộ nhớ (RAM) khi lượng tử hoá khoảng 1--2 MB, tương thích với PSRAM 8 MB của ESP32-S3;
-  \item Tốc độ suy luận nhanh (\textasciitilde 20--40 ms mỗi khung hình) trên phần cứng tài nguyên hạn chế;
-  \item Độ chính xác cao, gần tương đương hoặc vượt các mô hình nhẹ khác như MobileNetV2/V3.
-\end{itemize}
+\subsection{Mạng nơ-ron tích chập và dòng kiến trúc EfficientNet}
 
-Bảng so sánh một số kiến trúc:
-\begin{table}[h]
-  \centering
-  \caption{So sánh một số kiến trúc mô hình cho Edge AI}
-  \begin{tabular}{lcccc}
-    \toprule
-    Mô hình & Kích thước & RAM ước tính & Độ trễ INT8 & Phù hợp ESP32-S3 \\
-    \midrule
-    ResNet18 & 44 MB & 15 MB & 90 ms & Không \\
-    ResNet50 & 98 MB & 35 MB & 175 ms & Không \\
-    MobileNetV2 & 14 MB & 3 MB & 25 ms & Giới hạn \\
-    MobileNetV3-Small & 5{,}5 MB & 2 MB & 18 ms & Tốt \\
-    \textbf{EfficientNet-Lite0} & \textbf{5{,}3 MB} & \textbf{1{,}5 MB} & \textbf{22 ms} & \textbf{Tối ưu} \\
-    \bottomrule
-  \end{tabular}
-\end{table}
-
-\subsection{Lý do lựa chọn}
-
-Như phân tích trong README của dự án, ResNet18/ResNet50 có kích thước quá lớn, đòi hỏi phần cứng đắt tiền (Jetson Nano, Raspberry Pi 4) và không phù hợp với ESP32-S3. EfficientNet-Lite0 mang lại sự cân bằng tốt giữa:
-\begin{itemize}
-  \item Độ chính xác cao nhờ kiến trúc hiện đại;
-  \item Kích thước nhỏ, dễ lượng tử hoá;
-  \item Tốc độ suy luận đủ cho thời gian thực trên vi điều khiển.
-\end{itemize}
-
-\section{Thiết bị biên và máy ảo giả lập ESP32-S3}
-
-\subsection{Khái niệm}
-
-ESP32-S3 là dòng vi điều khiển 32-bit của Espressif, tích hợp WiFi, hỗ trợ AI instructions (vector extensions) và có tuỳ chọn PSRAM dung lượng lớn (8 MB). Trong đồ án này, thay vì sử dụng phần cứng ESP32-S3 thực tế, hệ thống sử dụng \textbf{máy ảo giả lập} có cấu hình phần cứng tương đương, cho phép kiểm thử và phát triển linh hoạt trước khi triển khai trên thiết bị thực.
-
-\subsection{Đặc điểm cấu hình máy ảo giả lập}
-
-Máy ảo giả lập được cấu hình với các thông số tương đương ESP32-S3:
-\begin{itemize}
-  \item Bộ xử lý giới hạn tương đương hai nhân, xung nhịp 240 MHz;
-  \item RAM giới hạn 8 MB (tương đương PSRAM của ESP32-S3);
-  \item Kết nối mạng qua giao thức MQTT;
-  \item Chạy mô hình EfficientNet-Lite0 đã lượng tử hoá INT8.
-\end{itemize}
-
-Việc sử dụng máy ảo mang lại các lợi ích:
-\begin{itemize}
-  \item Dễ dàng debug và kiểm thử mà không cần phần cứng vật lý;
-  \item Khả năng mô phỏng nhiều thiết bị đồng thời;
-  \item Tích hợp nhanh với pipeline CI/CD;
-  \item Chuyển đổi sang phần cứng thực chỉ cần điều chỉnh nhỏ.
-\end{itemize}
-
-\subsection{Chức năng trong hệ thống}
-
-Trong hệ thống, máy ảo giả lập đảm nhiệm:
-\begin{itemize}
-  \item Thu nhận khung hình từ nguồn video/camera giả lập, chuyển về kích thước 224x224 RGB;
-  \item Chuẩn hoá dữ liệu đầu vào theo thống kê ImageNet;
-  \item Thực hiện suy luận với mô hình EfficientNet-Lite0 đã lượng tử hoá;
-  \item Gửi cảnh báo qua MQTT kèm toạ độ GPS, thời gian, độ tin cậy, ảnh base64 lên trạm mặt đất.
-\end{itemize}
-
-\section{TensorFlow Lite Micro và suy luận trên thiết bị nhúng}
-
-\subsection{Khái niệm}
-
-TensorFlow Lite Micro là phiên bản rút gọn của TensorFlow Lite, thiết kế dành riêng cho vi điều khiển với bộ nhớ chỉ vài trăm kB đến vài MB. Thư viện này cho phép triển khai các mô hình đã lượng tử hoá (thường là INT8) trên các nền tảng như ARM Cortex-M, ESP32, v.v.
-
-\subsection{Đặc điểm}
-
-\begin{itemize}
-  \item Không phụ thuộc hệ điều hành, sử dụng bộ cấp phát bộ nhớ tĩnh (arena);
-  \item Hỗ trợ tập con các toán tử đủ dùng cho nhiều mô hình CNN nhỏ;
-  \item Dễ tích hợp với ESP-IDF thông qua component.
-\end{itemize}
-
-\subsection{Trong phạm vi đồ án}
-
-Trong code cơ sở của dự án, thư mục \texttt{edge/} được thiết kế để chứa mã nguồn ESP-IDF, bao gồm các file:
-\begin{itemize}
-  \item \texttt{main.c}: vòng lặp chính của ứng dụng;
-  \item \texttt{camera\_handler.c}: thu nhận khung hình từ camera;
-  \item \texttt{inference\_engine.c}: tích hợp TensorFlow Lite Micro để suy luận;
-  \item \texttt{mqtt\_client.c}: gửi cảnh báo tới broker MQTT.
-\end{itemize}
-
-Do giới hạn thời gian, đồ án dừng ở mức thiết kế và mô tả kiến trúc, chưa hoàn thiện toàn bộ phần triển khai firmware trên ESP32, tuy nhiên các bước chuẩn bị về mô hình và kiến trúc đã sẵn sàng để tích hợp.
-
-\section{Giao thức MQTT và Mosquitto Broker}
-
-\subsection{Giao thức MQTT}
-
-MQTT là giao thức truyền thông nhẹ, mô hình publish/subscribe, rất phù hợp cho mạng cảm biến với băng thông hạn chế. Trong hệ thống đề xuất:
-\begin{itemize}
-  \item Thiết bị biên (máy ảo giả lập) đóng vai trò \emph{publisher}, gửi thông điệp đến các topic;
-  \item Trạm mặt đất là \emph{subscriber}, nhận dữ liệu cảnh báo;
-  \item Mosquitto Broker đóng vai trò trung gian điều phối message.
-\end{itemize}
-
-\subsection{Các MQTT Topics}
-
-Hệ thống định nghĩa các topic sau:
-\begin{table}[h]
-  \centering
-  \caption{Các MQTT Topics trong hệ thống}
-  \begin{tabular}{ll}
-    \toprule
-    Topic & Mục đích \\
-    \midrule
-    \texttt{wildfire/alerts} & Cảnh báo phát hiện cháy/khói kèm ảnh \\
-    \texttt{wildfire/heartbeat} & Heartbeat kiểm tra thiết bị còn hoạt động \\
-    \texttt{wildfire/resolved} & Thông báo cảnh báo đã được xử lý \\
-    \texttt{wildfire/devices/status} & Trạng thái thiết bị (pin, nhiệt độ, uptime) \\
-    \bottomrule
-  \end{tabular}
-\end{table}
-
-\section{Prometheus và Metrics}
-
-\subsection{Khái niệm}
-
-Prometheus là hệ thống giám sát và cảnh báo mã nguồn mở, lưu trữ dữ liệu dạng time-series. Prometheus thu thập (scrape) metrics từ các endpoint HTTP theo chu kỳ cố định và lưu vào cơ sở dữ liệu nội bộ.
-
-\subsection{Vai trò trong hệ thống}
-
-Trong hệ thống phát hiện cháy rừng, Prometheus đảm nhiệm:
-\begin{itemize}
-  \item Thu thập metrics từ Exporter (FastAPI) mỗi 10 giây;
-  \item Lưu trữ time-series data trong 30 ngày;
-  \item Cung cấp ngôn ngữ truy vấn PromQL cho Grafana;
-  \item Đánh giá các alert rules và gửi đến Alertmanager.
-\end{itemize}
-
-\subsection{Định nghĩa Metrics}
-
-Các metrics được thiết kế cho Grafana Geomap:
-\begin{table}[h]
-  \centering
-  \caption{Prometheus Metrics cho hệ thống Fire Detection}
-  \begin{tabular}{llp{6cm}}
-    \toprule
-    Metric & Loại & Mô tả \\
-    \midrule
-    \texttt{fire\_alert\_info} & Gauge & Thông tin cảnh báo cháy với vị trí (cho Geomap) \\
-    \texttt{fire\_confidence\_latest} & Gauge & Độ tin cậy mới nhất theo thiết bị \\
-    \texttt{fire\_device\_status} & Gauge & Trạng thái online/offline của thiết bị \\
-    \texttt{fire\_device\_battery} & Gauge & Phần trăm pin của thiết bị \\
-    \texttt{fire\_alerts\_total} & Counter & Tổng số cảnh báo theo thiết bị \\
-    \texttt{fire\_active\_alerts\_count} & Gauge & Số cảnh báo đang hoạt động \\
-    \bottomrule
-  \end{tabular}
-\end{table}
-
-\textbf{Yêu cầu quan trọng}: Để hiển thị trên Grafana Geomap, metrics phải có các labels \texttt{latitude} và \texttt{longitude} dạng số thực (ví dụ: ``21.0285'', ``105.8542'').
-
-\section{Grafana và Dashboard Geomap}
-
-\subsection{Khái niệm}
-
-Grafana là nền tảng phân tích và trực quan hoá dữ liệu mã nguồn mở, hỗ trợ nhiều loại datasource như Prometheus, InfluxDB, MySQL. Grafana cung cấp nhiều loại panel visualization, trong đó \textbf{Geomap} cho phép hiển thị dữ liệu trên bản đồ địa lý.
-
-\subsection{Vai trò trong hệ thống}
-
-Trong hệ thống, Grafana cung cấp:
-\begin{itemize}
-  \item Dashboard hiển thị vị trí cảnh báo cháy trên bản đồ Việt Nam;
-  \item Biểu đồ thống kê số lượng cảnh báo theo thời gian;
-  \item Bảng danh sách cảnh báo với link xem ảnh;
-  \item Bản đồ trạng thái các thiết bị giám sát;
-  \item Auto-refresh mỗi 10 giây để cập nhật thời gian thực.
-\end{itemize}
-
-\subsection{Cấu hình Geomap Panel}
-
-Để Geomap hiển thị đúng, cần cấu hình:
-\begin{enumerate}
-  \item \textbf{Query}: Sử dụng PromQL query \texttt{fire\_alert\_info}, format Table, type Instant;
-  \item \textbf{Location}: Mode Coords, Latitude field: \texttt{latitude}, Longitude field: \texttt{longitude};
-  \item \textbf{Style}: Size và Color theo field Value (confidence), thresholds: $<0.7$ vàng, $0.7$--$0.85$ cam, $>0.85$ đỏ;
-  \item \textbf{Tooltip}: Mode Details để hiển thị tất cả thông tin (alert\_id, device\_id, location, image\_url).
-\end{enumerate}
-
-\section{Alertmanager và Telegram Notification}
-
-\subsection{Alertmanager}
-
-Alertmanager là thành phần của Prometheus stack, chịu trách nhiệm:
-\begin{itemize}
-  \item Nhận alerts từ Prometheus;
-  \item Nhóm (grouping) các alerts tương tự;
-  \item Áp dụng silence và inhibition rules;
-  \item Gửi thông báo qua nhiều kênh (Telegram, Email, Webhook).
-\end{itemize}
-
-\subsection{Chiến lược thông báo kép}
-
-Hệ thống sử dụng chiến lược thông báo kép (dual notification):
-\begin{enumerate}
-  \item \textbf{Thông báo tức thì (Immediate)}: Gửi ngay khi phát hiện cháy qua Exporter, bao gồm ảnh đính kèm và link Google Maps;
-  \item \textbf{Thông báo nhắc nhở (Reminder)}: Nếu cảnh báo chưa được xử lý sau 15 phút, Alertmanager gửi nhắc nhở, lặp lại mỗi 15--30 phút.
-\end{enumerate}
-
-\subsection{Cấu hình Alert Rules}
-
-Các alert rules được định nghĩa trong Prometheus:
-\begin{table}[h]
-  \centering
-  \caption{Alert Rules trong hệ thống}
-  \begin{tabular}{llc}
-    \toprule
-    Alert & Điều kiện & Severity \\
-    \midrule
-    \texttt{FireDetected} & confidence $> 50\%$ & Critical \\
-    \texttt{HighConfidenceFire} & confidence $> 90\%$ & Critical \\
-    \texttt{DeviceOffline} & device offline $> 5$ phút & Warning \\
-    \texttt{MultipleFireAlerts} & $> 5$ alerts trong 10 phút & Warning \\
-    \bottomrule
-  \end{tabular}
-\end{table}
-
-\subsection{Telegram Bot Integration}
-
-Telegram Bot được tích hợp để gửi thông báo thời gian thực:
-\begin{itemize}
-  \item Bot token và chat ID được cấu hình qua biến môi trường;
-  \item Hỗ trợ gửi đến nhiều chat ID (nhóm kiểm lâm, admin);
-  \item Tin nhắn bao gồm: emoji cảnh báo, vị trí, tọa độ (link Google Maps), độ tin cậy, ảnh phát hiện, thời gian.
-\end{itemize}
-
-\section{Nền tảng Kubernetes và kubeadm}
-
-\subsection{Kiến trúc Microservices trên Kubernetes}
-
-Hệ thống được triển khai theo kiến trúc microservices trên Kubernetes cluster, được khởi tạo bằng kubeadm. Các thành phần được đóng gói thành Pods và quản lý bởi Deployments/Services:
-\begin{table}[h]
-  \centering
-  \caption{Các Kubernetes Deployments trong hệ thống}
-  \begin{tabular}{llc}
-    \toprule
-    Deployment/Pod & Chức năng & Port (Service) \\
-    \midrule
-    \texttt{fire-mosquitto} & MQTT Broker & 1883, 9001 \\
-    \texttt{fire-exporter} & FastAPI Metrics Exporter & 8000 \\
-    \texttt{fire-prometheus} & Prometheus Server & 9090 \\
-    \texttt{fire-alertmanager} & Alertmanager & 9093 \\
-    \texttt{fire-grafana} & Grafana Dashboard & 3000 \\
-    \texttt{fire-nginx} & Image Server (static) & 8080 \\
-    \bottomrule
-  \end{tabular}
-\end{table}
-
-\subsection{Cài đặt Kubernetes Cluster với kubeadm}
-
-Cluster được khởi tạo bằng kubeadm với các bước:
-\begin{enumerate}
-  \item Cài đặt container runtime (containerd) và kubeadm, kubelet, kubectl trên tất cả các node;
-  \item Khởi tạo control-plane: \texttt{kubeadm init --pod-network-cidr=10.244.0.0/16};
-  \item Cài đặt CNI plugin (Flannel hoặc Calico) cho networking giữa các Pods;
-  \item Join worker nodes vào cluster bằng token từ control-plane;
-  \item Deploy các ứng dụng thông qua YAML manifests (Deployment, Service, ConfigMap, Secret).
-\end{enumerate}
-
-\subsection{Kubernetes Networking}
-
-Tất cả Pods giao tiếp qua Kubernetes Service Discovery, sử dụng DNS nội bộ (CoreDNS). Ví dụ: Pod có thể truy cập Prometheus qua \texttt{fire-prometheus.default.svc.cluster.local:9090} hoặc rút gọn \texttt{fire-prometheus:9090} trong cùng namespace.
-
-\section{Knowledge Distillation}
-
-\subsection{Khái niệm}
-
-Knowledge distillation là kỹ thuật trong đó một mô hình lớn (teacher) truyền tri thức sang một mô hình nhỏ hơn (student). Thay vì chỉ học từ nhãn cứng (hard labels), mô hình học sinh còn học từ phân phối xác suất mềm (\emph{soft labels}) do mô hình giáo viên sinh ra \cite{hinton2015distilling,gou2021survey}.
-
-\subsection{Đặc điểm và lợi ích}
-
-\begin{itemize}
-  \item Khai thác được các thông tin ẩn trong phân phối đầu ra (ví dụ: mẫu gần ranh giới giữa hai lớp);
-  \item Giúp mô hình nhỏ tổng quát hoá tốt hơn, giảm overfitting;
-  \item Giữ nguyên kích thước mô hình triển khai nhưng cải thiện độ chính xác 1--3\%.
-\end{itemize}
-
-\subsection{Áp dụng trong đồ án}
-
-Repo cung cấp hai nhánh thí nghiệm:
-\begin{itemize}
-  \item \texttt{distillation\_experiment/}: thí nghiệm với mô hình teacher EfficientNet-B3 và student EfficientNet-B0;
-  \item \texttt{experiments/knowledge\_distillation/}: thí nghiệm tương tự nhưng cấu hình tổng quát hơn, cho phép chọn nhiều kiến trúc teacher/student và tham số nhiệt độ, hệ số pha trộn loss.
-\end{itemize}
-
-Hàm loss tổng quát:
-\[
-  \mathcal{L}_{\text{total}} = \alpha \cdot \mathcal{L}_{\text{CE}}(y_s, y) + (1 - \alpha) \cdot \mathcal{L}_{\text{KL}}(p_s^T, p_t^T),
-\]
-trong đó \(y\) là nhãn thật, \(y_s\) là đầu ra của student, \(p_s^T, p_t^T\) là phân phối softmax ở nhiệt độ \(T\) của student và teacher, \(\alpha\) là trọng số giữa nhãn cứng và nhãn mềm.
-
-Kết quả kỳ vọng (theo tài liệu trong repo) cho thấy mô hình học sinh được distill có thể đạt độ chính xác cao hơn 1--3\% so với mô hình huấn luyện trực tiếp, trong khi vẫn giữ kích thước và tốc độ suy luận tương đương.
+Giai đoạn đánh giá và phân loại hình ảnh trong dự án được xây dựng dựa trên các lý thuyết nền tảng của học sâu (Deep Learning), với khối thiết kế trung tâm là mạng nơ-ron tích chập (Convolutional Neural Network - CNN). Đây là một mô hình toán học tiên tiến chuyên phụ trách bóc tách các đặc trưng của không gian ảnh, từ những đường nét thô sơ cho đến những kết cấu phức tạp của ngọn lửa hay đám khói. Trong lịch sử phát triển của mạng CNN, họ kiến trúc EfficientNet \cite{tan2019efficientnet} đã nổi lên như một phương pháp tiếp cận cân bằng đáng biểu dương. Thay vì chỉ mở rộng cấu trúc mạng một cách đơn lẻ theo chiều sâu (thêm nhiều lớp), chiều rộng (thêm nhiều nơ-ron) hoặc độ phân giải ảnh đầu vào, EfficientNet mang đến một hệ số tinh chỉnh đồng nhất (compound scaling). Sự phối hợp nhịp nhàng giữa ba yếu tố này tạo ra một mô hình có khả năng duy trì độ chuẩn xác lý tưởng trong khi vẫn kiểm soát chặt chẽ lượng tham số và khối lượng tính toán. 
+
+Trong khuôn khổ của đồ án, nhóm quyết định đặt trọng tâm thực nghiệm vào hai phiên bản thuộc phổ nhỏ gọn của dòng kiến trúc này: EfficientNet-B0 là phiên bản cơ sở chuẩn mực và EfficientNet-Lite0 là phiên bản đã được tối giản hóa sâu hơn. Quyết định lựa chọn này xuất phát từ mong muốn kiểm định mức hao hụt về độ chuẩn xác khi ta cố gắng gọt giũa một mạng nơ-ron thành hình hài nhẹ nhất có thể, chuẩn bị cho quá trình đính kèm vào các thiết bị IoT vốn chỉ mang trong mình vài Megabyte bộ nhớ RAM khiêm tốn. Việc áp dụng linh hoạt PyTorch trong khâu mô phỏng giúp đồ án dễ dàng tích hợp thêm các kỹ thuật tăng cường dữ liệu (Data Augmentation) tiên tiến nhằm đối phó với sự thiếu hụt các ảnh nền rừng đa dạng. 
+
+\subsection{Kỹ thuật lượng tử hóa (Quantization) và ONNX Runtime}
+
+Việc huấn luyện thành công một mạng nơ-ron thông qua khung phần mềm PyTorch mới chỉ giải quyết được một nửa bài toán thực tiễn. Để đưa khối cấu trúc có phần đồ sộ dưới định dạng số thực dấu phẩy động 32-bit (FP32) xuống phân lớp phần cứng vi điều khiển, đồ án đã tiến hành thử nghiệm song song kỹ thuật lượng tử hóa (Quantization). Kỹ thuật này về cơ bản đóng vai trò như một phương thức nén dữ liệu có chủ đích, trực tiếp kéo mức biểu diễn của các ma trận trọng số từ độ sâu 32-bit xuống không gian lưu trữ số nguyên 8-bit (INT8). Việc đánh đổi một lượng nhất định biên độ chi tiết của phép toán mang lại một lợi thế đáng giá: toàn bộ không gian tập tin trọng số (weights file) cũng như lượng bộ nhớ tạm thời RAM bị chiếm dụng đều có thể giảm xuống còn một phần tư, giúp mở cánh cửa cho mô hình hòa nhập vào môi trường hạn hẹp của thiết bị đầu cuối. 
+
+Liền kề sau quá trình cấu trúc lại dữ liệu, dự án tìm đến định dạng ONNX (Open Neural Network Exchange) \cite{onnxruntime} để thiết lập nền tảng cầu nối. ONNX Runtime với đặc tính là một định dạng chung (universal format), không những định nghĩa các phép toán đồ thị một cách minh bạch mà còn cung cấp một bộ máy thực thi vô cùng gọn gàng (inference engine). Từ bước đệm này, bất kể là mã ngôn ngữ Python vận hành trên mô hình giả lập, hay phần sụn (firmware) C/C++ thiết kế riêng cho các bo mạch nhúng, đều có thể nạp tệp mô hình và tiến hành suy luận độc lập mà không cần phải mang theo bất cứ thư viện đồ sộ nào cả.
+
+\subsection{Chưng cất tri thức (Knowledge Distillation - KD)}
+
+Trong quá trình tìm kiếm sự tối ưu, đồ án cũng dành không gian để tiếp cận một nguyên lý huấn luyện mang tính chiến lược tên là Chưng cất tri thức (Knowledge Distillation) \cite{hinton2015distilling, gou2021survey}. Khái niệm này có thể được hình dung nôm na tựa như một quá trình truyền nghề, trong đó một mô hình giáo viên (Teacher module) với dung lượng và kiến trúc lớn, ví dụ như cấu trúc EfficientNet-B0 tiêu chuẩn, truyền đạt lại kỹ năng đánh giá không gian hình ảnh cho một mô hình học sinh (Student module) linh hoạt hơn, ở đây là cấu trúc EfficientNet-Lite0. Điểm mấu chốt của KD là bản thân mô hình học sinh không chỉ được nạp các nhãn phân cực tuyệt đối (hard-labels) đơn thuần, mà mục tiêu học tập còn được mở rộng ra bao trùm các xác suất phân bổ trung gian (soft-labels). 
+
+Các thông số phần trăm lưng chừng này - chẳng hạn như đánh giá một mảng màu có 10\% độ tin cậy là lá cây phản chiếu ánh vàng, và 90\% là khói lửa - chứa đựng cả góc nhìn uyển chuyển của mô hình lớn về một ranh giới mơ hồ. Thông qua sự định hướng và rèn giũa này, Lite0 được kỳ vọng sẽ gia cố vững vàng hơn khả năng phát hiện ở những rìa phân loại phức tạp, từ đó tối thiểu hóa những báo động nhầm. Đồ án đưa lý thuyết này vào cấu trúc đối sánh như một giải pháp tham khảo, kiểm tra xem liệu việc ghép nối các đường bao phân loại như vậy có tạo ra độ chênh lệch tỉ lệ đúng sai có ý nghĩa thống kê hay không so với phương pháp thu nạp nhãn cứng trực tiếp truyền thống.
+
+\section{Thiết bị biên và các tiêu chuẩn mạng truyền nhận}
+
+\subsection{Kiến trúc xử lý tại viền mạng (Edge AI) và thư viện OpenCV}
+
+Khác hẳn với những quy mô phát triển hệ thống dựa trên điện toán đám mây truyền thống nơi các video hay âm thanh liên tục được bơm về thiết bị chủ, đồ án này kiên định dựa trên tư duy kiến trúc Trí tuệ nhân tạo Biên (Edge AI). Về cơ bản, quan điểm này đề cao việc dời chuyển một cấu trúc thần kinh tính toán tới cư trú thẳng ở một nút mạng ngoài cùng của tổ hợp thông tin, trong trường hợp này là sát bên khối cảm biến quang học của bộ phận camera. Lý thuyết triển khai tại viền này giúp cơ quan giám sát giữ lại toàn bộ luồng video độ phân giải cao tại chốt lưu trữ bộ phận, chỉ thực hiện đóng nhãn các bất thường. Cơ chế làm việc tại chỗ giúp giới hạn lượng tài nguyên mang đi đến mức khó tin - ước tính cắt giảm tới 99\% nhu cầu băng thông nếu so với giao thức streaming luồng liên tục 5-10 Megabit mỗi giây truyền thống. Lợi thế tiết kiệm này thực chất là nền tảng sống còn khi hệ thống phải thi công ở phân vùng ngoại ô hiểm trở thưa thớt phủ sóng băng thông rộng.
+
+Để thao tác chính xác với các thành phần nguồn, bộ giả lập vận hành thư viện xử lý ảnh phổ dụng mã nguồn mở là OpenCV \cite{opencv}. Được ứng dụng vô cùng phong phú qua hàng trăm quy trình thương mại thực tế, OpenCV ở đây đứng vai trò như một thấu kính sơ cấp. Mã nguồn sẽ nhờ nó thu xuất từng khung thời gian tĩnh, chuẩn hóa tỷ lệ kích thước vật lý sao cho lọt vừa vặn mảng ma trận điểm đầu vào 224x224 điểm ảnh, và sau đó lật các kênh sắc độ về định dạng RGB theo chuẩn mô hình đòi hỏi.
+
+\subsection{Giao thức vận chuyển MQTT và đài môi giới Mosquitto}
+
+Giây phút vi mạch hoàn thành chu kỳ và phỏng đoán tín hiệu bất thường trong cụm điểm ảnh vượt qua ngưỡng xác suất tin cậy an toàn, nó khởi chạy thuật toán đóng gói và phát tin đi qua mô thức truyền tải đo lường từ xa MQTT (Message Queuing Telemetry Transport) \cite{mqtt}. Việc hệ thống không kết nối dựa trên thiết lập máy chủ mạng truy xuất tệp HTTP đồ sộ truyền thống được giải thích là bởi tính chất đơn thuần, lược bỏ các lệnh hội thoại hai chiều rườm rà của tiêu chuẩn đo lường này. Gồm hai tác vụ căn bản là Xuất bản (Publish) và Đăng ký (Subscribe), sự giao tiếp sẽ không đè nặng áp lực phân giải thông tin lên khối năng lượng của vòng mạch vi xử lý, góp phần nâng tầm triển vọng triển khai thiết bị tiết kiệm pin hoạt động nhờ năng lượng mặt trời.
+
+Tại đầu cầu kết nối, chuỗi tin nhị phân mang theo thông số tọa độ lẫn bản mã hóa của bức ảnh hiện thời sẽ đỗ lại nhà điều phối trung gian Mosquitto Broker \cite{mosquitto}. Nền tảng môi giới linh hoạt này đứng ra làm cổng định tuyến. Nhiệm vụ duy nhất lúc này của broker là duy trì hệ thống cây gia phả chứa các phân loại kênh như chủ đề `wildfire/alerts` biểu thị điểm cháy hay chủ đề `wildfire/heartbeat` biểu thị mạch đập sinh tồn của nút điều phối thiết bị vòng ngoài, sau đó nhân bản thông báo phân phối lại cho tất cả các phần mềm nhận tín ở chuỗi dây chuyền sau. 
+
+\section{Nền tảng điều phối trung tâm và API nhỏ giọt}
+
+\subsection{Kiến trúc vi dịch vụ và hệ sinh thái Kubernetes}
+
+Vai trò của hệ sinh thái tổng trạm điều hành mặt đất, nơi sẽ vận hành quy trình đánh giá dữ kiện dài hạn, được thiết kế đồng bộ dưới lăng kính kiến trúc Vi dịch vụ (Microservice architectures). Mỗi mắt xích cơ sở như đài kết nối mạng, kho thông báo, ứng dụng giám sát biểu đồ đều bị cắt nhỏ và đưa vào những không gian vận hành giới hạn độc lập dưới cái tên rập khuôn tiêu chuẩn Container. Theo sát quá trình quản trị này là việc vận dụng môi sinh Kubernetes \cite{kubernetes}. Bằng cách khởi nguyên theo quy tắc đóng gói của thư viện phân loại kubeadm \cite{kubeadm}, Kubernetes cung cấp không gian thao túng vô hạn cho một máy tính hệ thống.
+
+Xuyên suốt quá trình phát triển, dự án chú trọng thử nghiệm thiết lập việc buộc các dịch vụ định tuyến phải trói buộc vật lý ở một khu vực xử lý máy chủ theo cấu trúc tĩnh từ nhãn hướng dẫn (nodeSelector parameters). Một cấu trúc phân nhánh tinh ranh như vậy vừa góp phần giới hạn tải điều hành một khuếch đại tự thân, và giả sử rằng nếu cơ sở hạ tầng đám mây khu vực bị mất liên hệ cục bộ thì dữ liệu nội hạt đó vẫn đang được xử lý độc lập, không xé lẻ đi sai vùng truyền tải khiến gián đoạn cấu tạo chung.
+
+\subsection{Cổng giao tiếp API nhỏ giọt dựa trên FastAPI}
+
+Tính đến trường hợp hệ thống quy mô lớn ở đó đám cháy trải rộng gây báo động dây chuyền trên nhiều nút định tuyến camera cùng lúc, máy chủ cơ sở dữ liệu sẽ gánh lấy vô vàn tín hiệu cảnh báo chứa chung một lượng điểm ảnh nội suy trong nháy mắt (một biến thể tự tạo tương tự như Tấn công Từ chối Dịch vụ từ nội bộ). Phương án rào cản ứng phó là phát triển một máy trạm trung du đón lõng (Gateway Application). Xây dựng trên khung thao tác máy chủ Web đồng bộ tốc độ cao FastAPI \cite{fastapi}, nhánh chương trình Python này chịu trách nhiệm đứng đợi và giải mã chuỗi tin giao tiếp bằng MQTT broker trước tiên.
+
+Tính năng tối cốt tử được nhóm trang bị vào cửa ngõ FastAPI là vòng đoạt bảo lưu thời gian ngắt (cooldown/debouncing). Bằng cơ chế lưu trữ tự thân dạng in-memory tự do, bất kỳ thông báo lửa nào đến từ chung một vùng định danh vĩ tuyến trong vòng chu kỳ khoảng mười lăm phút tiêu chuẩn sẽ chỉ làm mới hệ số báo đỏ chứ tuyệt đối không chuyển nạp về kho lưu trữ thành mới thêm một lần nào. Bước làm sạch thông tin trùng này chặn đứng sự quá tải và sự ùn ứ tài nguyên cơ sở vật chất quý báu ở đường sau của các phân lớp phân vùng phân tích sâu rộng.
+
+\section{Hệ thống giám sát đo lường và cảnh báo diện rộng}
+
+\subsection{Lưu trữ chuỗi thời gian phân cấp với Prometheus}
+
+Giai đoạn đánh giá dữ kiện khép lại khi Gateway phân luồng xong hệ thống, lúc bấy giờ, bộ não đo lường thông số Prometheus \cite{prometheus} tiến vào hoạt động dựa trên phương thức cấu hình trích xuất (scraping mechanism). Định kỳ xoay quanh chu kỳ mỗi 10 giây, máy chủ này gửi lệnh gọi kết nối vào Gateway và sao lục hàng loạt những danh sách dạng cặp khóa giá trị (metric data) đi từ thông số mạng đập, trạng thái kết nối cho đến thông số xác suất tin cậy cao vừa diễn giải. Mấu chốt làm nên hiệu quả khác biệt của dạng nền tảng ghi trú chuỗi thời gian (time-series database) là nó cho phép dữ liệu vắt ngang theo thời điểm nối tiếp, người nắm giữ hệ thống dễ dàng nắm bắt tổng quan đồ thị thay đổi tiến độ xử lý mà không cần các tham chiếu chéo tốn tài nguyên.
+
+\subsection{Cơ chế đối soát Alertmanager và hệ truyền tin Telegram}
+
+Quá trình thu thập đồ thị thời gian sẽ dần tạo ra vô nghĩa nếu thiếu vắng cấu trúc phản kháng trực tiếp dựa theo trạng thái khẩn diễn ra. Tác vụ đó được chuyên môn hóa bởi máy chủ đồng hành Alertmanager, chuyên quy chiếu toàn bộ những hằng số báo động từ cụm Prometheus. Bộ điều độ này ôm hàng loạt biến cấu quy tắc, thí dụ như "Mức độ tự tin vượt hơn 90\%" hay "Hơn 5 điểm cảnh báo khác nhau cho cùng một đám cháy lớn", sau khi xác nhận các ngưỡng đỏ được thiết lập vững chắc, hệ thống tự động bóp cò mở chuỗi ứng dụng ngoài. 
+
+Việc rẽ nhánh này thông qua tập mã chuẩn Webhook nhằm nối thẳng vào Bot API quen thuộc của nền tảng hội thoại qua giao thức di động phổ thông Telegram. Kênh thông tin viễn thông này đem đến tín hiệu có âm thông báo thẳng tới lực lượng tuần tra khu vực và kiểm lâm đang túc trực trong rừng, bên trong thông tin chứa cả chiết xuất kinh vĩ tuyến (gắn dính vào địa chỉ Google Maps) và một mảnh ảnh mờ được bóc tách từ hiện trường ban đầu.
+
+\subsection{Truy xuất ảnh tĩnh và mô hình trực quan Grafana Geomap}
+
+Mảng ghép công nghệ cuối cùng kết lại tổ hợp đồ án chính là nền tảng quản trị thông tin chia sẻ rộng có tầm nhìn khái quát bao la Grafana \cite{grafana}. Cấu hình ứng dụng máy phục vụ tệp đơn giản Nginx được tích hợp vào trong cụm dịch vụ chỉ để lưu giữ không gian các tệp hình ảnh base64 được tải lên. Nhờ liên kết phân phối hình tĩnh này, thông báo và bản đồ sở hữu liên kết đường dẫn ngắn cực hiệu quả tránh làm tốn dung lượng của các phần mềm khác.
+
+Để tổng hợp thông số thành biểu tượng vị trí rải rác toàn cõi, chức năng cấu hình Grafana Geomap kết nối vào dòng suối dữ liệu Prometheus, trực tiếp quy chiếu cặp chỉ số Latitude và Longitude xuống bản đồ quy mô quốc tế. Tại vị trí đó, màn hình giám sát hình thành những điểm đỏ kích thước biến thiên, đổi màu khẩn cấp tương tự như màn hình trung tâm vệ tinh thời gian thực (real-time map layers). Chính nhờ tập hợp các khối công nghệ được nối liền chặt chẽ, chuỗi thiết bị giả tưởng đã có thể mô phỏng chi tiết chu trình truyền và xử lý tín hiệu đáng chú ý kể từ khi những ngọn lửa đầu tiên đi vào ống kính viền mạng, cho đến khi báo cáo thảm họa bập bùng nằm gọn trên màn chiếu trung tâm đài quan sát.
 
 %============================
 % CHƯƠNG 3: HIỆN THỰC HOÁ
@@ -1260,6 +948,26 @@ The Kubernetes Authors,
 Microsoft,
 ``ONNX Runtime - High Performance Inference Engine'',
 \url{https://onnxruntime.ai/}.
+
+\bibitem{vov2024wildfire}
+Báo điện tử VOV,
+``Hơn 2.222 vụ cháy, 529ha rừng bị thiêu rụi trong nửa đầu năm 2024'',
+\url{https://vov.vn/}.
+
+\bibitem{edgeai_bandwidth}
+Vartech Systems,
+``Edge AI and IoT Bandwidth Savings'',
+\url{https://www.vartechsystems.com/}.
+
+\bibitem{edgeai_latency}
+Geniatech,
+``How Edge AI Reduces Latency in Industrial IoT'',
+\url{https://www.geniatech.com/}.
+
+\bibitem{opencv}
+OpenCV,
+``Open Source Computer Vision Library'',
+\url{https://opencv.org/}.
 
 \end{thebibliography}
 
