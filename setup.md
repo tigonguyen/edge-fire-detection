@@ -1,124 +1,133 @@
-# Building a 2-Node Kubernetes Cluster with kubeadm and containerd
+# Building a Hybrid Cloud-Edge Kubernetes Cluster (GCP + VMware over Tailscale)
 
-To build a 2-node Kubernetes cluster that resembles the standard Rancher Desktop environment (which typically relies on `containerd` as the Container Runtime and `Flannel` for networking), you can follow this step-by-step `kubeadm` guide.
+This guide details how to build a 2-node Kubernetes cluster bridging a Google Cloud (GCP) Master node and a local VMware Worker node securely over the public internet. 
 
-You will need to run the following "Pre-requisites" and "Installation" steps on **both** your Master node and your Worker node.
+Because the nodes exist on completely different networks behind NATs and Firewalls, they communicate via a **Tailscale VPN** mesh. This guide is specifically tailored for **Debian 12/13** and resolves common networking, DNS, and Containerd sandbox issues encountered when running a distributed edge setup.
 
-### Step 1: Prepare the Nodes (Run on BOTH Nodes)
-Kubernetes requires specific kernel modules and network bridging to be enabled.
+---
+
+## Step 1: Prepare the OS and Networking (Run on BOTH Nodes)
+Kubernetes requires specific kernel modules, network bridging, and swap to be disabled.
 
 ```bash
-# 1. Disable Swap (Required for kubelet to work properly)
+# 1. Disable Swap (Required for Kubelet)
 sudo swapoff -a
 sudo sed -i '/ swap / s/^\(.*\)$/#\1/g' /etc/fstab
 
-# 2. Enable IPv4 packet forwarding and load necessary kernel modules
+# 2. Load Kernel Modules for Networking
 cat <<EOF | sudo tee /etc/modules-load.d/k8s.conf
 overlay
 br_netfilter
 EOF
-
 sudo modprobe overlay
 sudo modprobe br_netfilter
 
-# 3. Apply sysctl params required by setup
+# 3. Apply sysctl parameters
 cat <<EOF | sudo tee /etc/sysctl.d/k8s.conf
 net.bridge.bridge-nf-call-iptables  = 1
 net.bridge.bridge-nf-call-ip6tables = 1
 net.ipv4.ip_forward                 = 1
 EOF
-
 sudo sysctl --system
 ```
 
-### Step 2: Install the `containerd` CRI (Run on BOTH Nodes)
-Rancher Desktop uses `containerd` by default. We will install it and configure it to use the Systemd cgroup driver.
+## Step 2: Install and Configure `containerd` (Run on BOTH Nodes)
 
 ```bash
-# 1. Install prerequisites and Docker's apt repository (which hosts containerd)
+# 1. Install prerequisites and add Docker repo
 sudo apt-get update
-sudo apt-get install -y ca-certificates curl gnupg
+sudo apt-get install -y ca-certificates curl gnupg apparmor
+
 sudo install -m 0755 -d /etc/apt/keyrings
-curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+curl -fsSL https://download.docker.com/linux/debian/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
 sudo chmod a+r /etc/apt/keyrings/docker.gpg
 
+# Note: Using "bookworm" here specifically ensures compatibility even if running testing/Trixie
 echo \
-  "deb [arch="$(dpkg --print-architecture)" signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
-  "$(. /etc/os-release && echo "$VERSION_CODENAME")" stable" | \
+  "deb [arch="$(dpkg --print-architecture)" signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/debian bookworm stable" | \
   sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
 
 # 2. Install containerd
 sudo apt-get update
 sudo apt-get install -y containerd.io
 
-# 3. Configure containerd to use the systemd cgroup driver (Crucial for stability)
+# 3. Force Containerd to use SystemdCgroup (Crucial for node stability)
 sudo mkdir -p /etc/containerd
 containerd config default | sudo tee /etc/containerd/config.toml
 sudo sed -i 's/SystemdCgroup = false/SystemdCgroup = true/' /etc/containerd/config.toml
-
-# 4. Restart and enable containerd
 sudo systemctl restart containerd
 sudo systemctl enable containerd
 ```
 
-### Step 3: Install `kubeadm`, `kubelet`, and `kubectl` (Run on BOTH Nodes)
-We will install the core Kubernetes components from the official repositories.
+## Step 3: Install Kubernetes Components (Run on BOTH Nodes)
+*Note: We use the `[trusted=yes]` flag here to bypass Debian 13/Trixie's strict OpenPGP v3 signature rejection policy on Google's repositories.*
 
 ```bash
-# 1. Add Kubernetes apt repository
-sudo apt-get update
-sudo apt-get install -y apt-transport-https ca-certificates curl gpg
+sudo apt-get install -y apt-transport-https
+curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.35/deb/Release.key | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+echo 'deb [trusted=yes] https://pkgs.k8s.io/core:/stable:/v1.35/deb/ /' | sudo tee /etc/apt/sources.list.d/kubernetes.list
 
-# Download the public signing key for the Kubernetes package repositories (using v1.29 as example)
-curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.29/deb/Release.key | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
-echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.29/deb/ /' | sudo tee /etc/apt/sources.list.d/kubernetes.list
-
-# 2. Install the tools and lock their versions
 sudo apt-get update
 sudo apt-get install -y kubelet kubeadm kubectl
 sudo apt-mark hold kubelet kubeadm kubectl
 ```
 
----
-
-### Step 4: Initialize the Master Node (Run on MASTER Node ONLY)
-Now that the prerequisites are installed everywhere, we bootstrap the control plane. We pass the `10.244.0.0/16` Pod Network CIDR because the Flannel CNI requires it by default.
+## Step 4: Establish the Tailscale VPN (Run on BOTH Nodes)
+To route Pod traffic across the public internet between the GCP VM and the local VMware instance, both nodes must join a VPN. Crucially, we must disable Tailscale's Magic DNS, otherwise Kubelet will be unable to resolve and pull Google's container registries.
 
 ```bash
-# 1. Initialize the cluster
-sudo kubeadm init --pod-network-cidr=10.244.0.0/16
+# Install Tailscale
+curl -fsSL https://tailscale.com/install.sh | sh
 
-# 2. Once this finishes, it will output a "kubeadm join" command at the very bottom. 
-# COPY THAT COMMAND AND SAVE IT. It looks something like:
-# sudo kubeadm join <MASTER_IP>:6443 --token <token> --discovery-token-ca-cert-hash sha256:<hash>
+# Bring it up, but strictly disable DNS overriding
+sudo tailscale up --accept-dns=false
+```
 
-# 3. Setup your local Admin kubeconfig so you can use kubectl
+## Step 5: Fix Debian Sandbox & DNS Issues (Run on WORKER Node ONLY)
+Debian 12+ does not always enable `systemd-resolved` by default, which causes Kubelet sandbox creation to immediately crash. Local VMware NATs can also break DNS resolution when downloading K8s images.
+
+```bash
+# 1. Fix missing resolv.conf for the Kubelet Sandbox
+sudo mkdir -p /run/systemd/resolve
+sudo ln -sf /etc/resolv.conf /run/systemd/resolve/resolv.conf
+
+# 2. Force Kubelet to use Google's Public DNS (Fixes "no such host" for registry.k8s.io)
+echo "nameserver 8.8.8.8" | sudo tee /etc/resolv.conf > /dev/null
+
+# 3. Inform Kubelet that it MUST broadcast its Tailscale IP to the Master, not its local WiFi IP
+WORKER_IP=$(tailscale ip -4)
+echo "KUBELET_EXTRA_ARGS=\"--node-ip=$WORKER_IP\"" | sudo tee /etc/default/kubelet > /dev/null
+sudo systemctl daemon-reload
+sudo systemctl restart kubelet
+```
+
+## Step 6: Initialize the Control Plane (Run on MASTER Node ONLY)
+Initialize the Master, forcing it to listen **exclusively** on the Tailscale VPN network (`100.x.x.x`).
+
+```bash
+# 1. Get the Master's VPN IP
+MASTER_IP=$(tailscale ip -4)
+
+# 2. Initialize the cluster (Setting pod-network to 10.244.0.0/16 is required for Flannel)
+sudo kubeadm init \
+  --apiserver-advertise-address=$MASTER_IP \
+  --pod-network-cidr=10.244.0.0/16
+
+# 3. Setup local kubectl admin access
 mkdir -p $HOME/.kube
 sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
 sudo chown $(id -u):$(id -g) $HOME/.kube/config
 
-# 4. Install the Flannel CNI (This gives pods IP addresses and cross-node communication, identical to Rancher defaults)
+# 4. Install the Flannel CNI Network Plugin
 kubectl apply -f https://github.com/flannel-io/flannel/releases/latest/download/kube-flannel.yml
 ```
 
----
-
-### Step 5: Join the Worker Node (Run on WORKER Node ONLY)
-Take the join command that was generated at the end of Step 4, and paste it securely into your second node.
+## Step 7: Join the Edge Node (Run on WORKER Node ONLY)
+Copy the `kubeadm join` command generated at the end of Step 6 on the Master node, and paste it securely into your Worker node.
 
 ```bash
-# Replace with your actual join command from the Master node output
-sudo kubeadm join <MASTER_IP>:6443 --token <token> \
-        --discovery-token-ca-cert-hash sha256:<hash>
+# Example syntax:
+sudo kubeadm join <MASTER_TAILSCALE_IP>:6443 --token <token> --discovery-token-ca-cert-hash sha256:<hash>
 ```
 
-### Verification (Run on MASTER Node)
-Wait a few minutes for the Flannel pods to start communicating, and then run:
-
-```bash
-kubectl get nodes
-kubectl get pods -A
-```
-Once both nodes show the `Ready` status, you will have a production-lite Kubernetes cluster perfectly matching the underlying architecture of your local Rancher development environment! 
-
-You can then apply the edge manifests we created right over top of it using `kubectl apply -f app/edge/binhphuoc/...`.
+Wait ~30 seconds for the node to safely pull the `pause` and `flannel` images from the internet, and checking `kubectl get nodes` on the Master will proudly display both machines running happily in the `Ready` state!
