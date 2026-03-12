@@ -1,7 +1,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: frame-extractor-node
+  name: edge-fire-extractor
   namespace: default
   labels:
     app: frame-extractor
@@ -20,12 +20,12 @@ spec:
         location: node
     spec:
       containers:
-        - name: extractor
-          image: fire-extractor-python:v2
+        - name: edge-fire-extractor
+          image: edge-fire-extractor:latest
           imagePullPolicy: Never
           env:
             - name: MQTT_BROKER
-              value: mqtt-broker-node.default.svc
+              value: edge-fire-mqtt.default.svc
             - name: MQTT_PORT
               value: "1883"
             - name: VIDEO_DIR

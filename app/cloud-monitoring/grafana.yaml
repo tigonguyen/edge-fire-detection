@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
       - name: grafana
-        image: fire-grafana:latest
+        image: edge-fire-grafana:latest
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 3000

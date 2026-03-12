@@ -1,0 +1,33 @@
+# prometheus/prometheus.yml
+global:
+  scrape_interval: 15s          # Scrape mỗi 15 giây
+  evaluation_interval: 15s      # Evaluate rules mỗi 15 giây
+  external_labels:
+    monitor: 'fire-detection'
+
+# Alertmanager configuration
+# Sử dụng container name trong shared Docker network: fire-detection-network
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          - alertmanager.default.svc:9093
+
+# Load rules
+rule_files:
+  - /etc/prometheus/alerts.yml
+
+# Scrape configurations
+scrape_configs:
+  # Prometheus self-monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # Fire Detection Exporter
+  # Container name: fire-exporter trong network: fire-detection-network
+  - job_name: 'fire_detection'
+    scrape_interval: 10s
+    static_configs:
+      - targets: ['exporter-binhphuoc.default.svc:8000']
+    metrics_path: /metrics

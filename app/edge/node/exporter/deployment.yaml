@@ -1,30 +1,30 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: exporter-node
+  name: edge-fire-exporter
   namespace: default
   labels:
-    app: exporter-node
+    app: edge-fire-exporter
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: exporter-node
+      app: edge-fire-exporter
   template:
     metadata:
       labels:
-        app: exporter-node
+        app: edge-fire-exporter
       annotations:
         prometheus.io/scrape: "true"
         prometheus.io/port: "8000"
     spec:
       containers:
-      - name: exporter
-        image: fire-exporter:latest
+      - name: edge-fire-exporter
+        image: edge-fire-exporter:latest
         imagePullPolicy: Never
         env:
         - name: MQTT_BROKER
-          value: "mqtt-broker-node.default.svc"
+          value: "edge-fire-mqtt.default.svc"
         - name: MQTT_PORT
           value: "1883"
         - name: PYTHONUNBUFFERED
@@ -40,14 +40,14 @@ spec:
           value: "-5164746257"
         # Grafana will load the images from this cluster IP domain
         - name: IMAGE_BASE_URL
-          value: "http://exporter-node.default.svc:8080/images"
+          value: "http://edge-fire-exporter.default.svc:8080/images"
         ports:
         - containerPort: 8000
         volumeMounts:
         - name: images-volume
           mountPath: /app/images
-      - name: nginx
-        image: fire-nginx:latest
+      - name: edge-fire-nginx
+        image: edge-fire-nginx:latest
         imagePullPolicy: Never
         ports:
         - containerPort: 80
@@ -61,12 +61,12 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: exporter-node
+  name: edge-fire-exporter
   namespace: default
 spec:
   type: ClusterIP
   selector:
-    app: exporter-node
+    app: edge-fire-exporter
   ports:
   - name: metrics
     port: 8000

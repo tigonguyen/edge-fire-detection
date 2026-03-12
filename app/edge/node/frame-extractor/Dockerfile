@@ -19,7 +19,7 @@ COPY videos/*.mp4 /videos/
 
 # Configure environment variables
 ENV PYTHONUNBUFFERED=1
-ENV MQTT_BROKER="mqtt-broker-node.default.svc"
+ENV MQTT_BROKER="edge-fire-mqtt.default.svc"
 ENV MQTT_PORT="1883"
 ENV VIDEO_DIR="/videos"
 ENV FPS="2"

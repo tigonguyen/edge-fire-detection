@@ -47,7 +47,7 @@ spec:
       serviceAccountName: prometheus
       containers:
       - name: prometheus
-        image: fire-prometheus:latest
+        image: edge-fire-prometheus:latest
         imagePullPolicy: Never
         ports:
         - containerPort: 9090

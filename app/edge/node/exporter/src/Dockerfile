@@ -2,7 +2,7 @@
 # Fire Detection Prometheus Exporter
 #
 # Build:
-#   docker build -t fire-exporter .
+#   docker build -t edge-fire-exporter .
 #
 # Run standalone:
 #   docker run -d --name exporter \
@@ -12,14 +12,14 @@
 #     -e TELEGRAM_BOT_TOKEN=your_token \
 #     -e TELEGRAM_CHAT_ID=your_chat_id \
 #     -v $(pwd)/../images:/app/images \
-#     fire-exporter
+#     edge-fire-exporter
 #
 # Debug mode (with shell):
 #   docker run -it --rm \
 #     -p 8000:8000 \
 #     -e MQTT_BROKER=host.docker.internal \
 #     -v $(pwd)/../images:/app/images \
-#     fire-exporter /bin/bash
+#     edge-fire-exporter /bin/bash
 
 FROM python:3.11-slim
 

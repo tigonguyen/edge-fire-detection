@@ -26,7 +26,7 @@ COPY fire_detection_best.pth /model/
 
 # Configure
 ENV PYTHONUNBUFFERED=1
-ENV MQTT_BROKER="mqtt-broker-node.default.svc"
+ENV MQTT_BROKER="edge-fire-mqtt.default.svc"
 ENV MQTT_PORT="1883"
 ENV MODEL_PATH="/model/fire_detection_best.pth"
 

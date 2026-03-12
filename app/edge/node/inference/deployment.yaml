@@ -1,7 +1,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: inference-node
+  name: edge-fire-inference
   namespace: default
   labels:
     app: inference
@@ -21,12 +21,12 @@ spec:
     spec:
 
       containers:
-        - name: inference
-          image: fire-inference-python:v2
+        - name: edge-fire-inference
+          image: edge-fire-inference:latest
           imagePullPolicy: Never
           env:
             - name: MQTT_BROKER
-              value: mqtt-broker-node.default.svc
+              value: edge-fire-mqtt.default.svc
             - name: MQTT_PORT
               value: "1883"
             - name: INTERVAL_SECONDS

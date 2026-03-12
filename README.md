@@ -121,15 +121,15 @@ The pipeline relies on custom Python applications. You must build these images i
 ```bash
 # Build the Frame Extractor Image
 cd app/edge/node/frame-extractor
-docker build -t fire-extractor-python:v2 .
+docker build -t edge-fire-extractor:latest .
 
 # Build the AI Inference Image
 cd ../inference
-docker build -t fire-inference-python:v2 .
+docker build -t edge-fire-inference:latest .
 
 # Build the Cloud Exporter Gateway Image
 cd ../exporter/src
-docker build -t fire-exporter:latest .
+docker build -t edge-fire-exporter:latest .
 ```
 
 ### 3. Deploy the Edge Sites
@@ -154,7 +154,7 @@ kubectl apply -f app/edge/node/frame-extractor/
 Wait approximately 30-45 seconds for the `EfficientNet` model to bootstrap. Then, observe the Edge AI telemetry in real-time:
 
 ```bash
-kubectl logs -l app=inference-node -f
+kubectl logs -l app=edge-fire-inference -f
 ```
 
 *(Expected output showing parallel regional evaluation)*

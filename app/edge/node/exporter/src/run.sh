@@ -4,8 +4,8 @@
 
 set -e
 
-CONTAINER_NAME="fire-exporter"
-IMAGE_NAME="fire-exporter"
+CONTAINER_NAME="edge-fire-exporter"
+IMAGE_NAME="edge-fire-exporter"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 

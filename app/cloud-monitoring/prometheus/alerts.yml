@@ -1,0 +1,50 @@
+# prometheus/alerts.yml
+groups:
+  - name: fire_detection_alerts
+    rules:
+      # Alert khi phát hiện cháy mới
+      - alert: FireDetected
+        expr: fire_alert_info * 100 > 50
+        for: 0m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Fire detected at {{ $labels.location }}"
+          confidence: "{{ $value | printf \"%.1f\" }}%"
+          description: |
+            Fire detected with confidence {{ $value | printf "%.1f" }}%
+            Location: {{ $labels.location }}
+            Coordinates: {{ $labels.latitude }}, {{ $labels.longitude }}
+            Device: {{ $labels.device_id }}
+            Image: {{ $labels.image_url }}
+
+      # Alert khi confidence cao
+      - alert: HighConfidenceFire
+        expr: fire_alert_info * 100 > 90
+        for: 0m
+        labels:
+          severity: critical
+        annotations:
+          summary: "HIGH CONFIDENCE fire at {{ $labels.location }}"
+          confidence: '{{ $value | printf "%.1f" }}%'
+          description: 'Confidence: {{ $value | printf "%.1f" }}%'
+
+      # Alert khi device offline
+      - alert: DeviceOffline
+        expr: fire_device_status == 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Device {{ $labels.device_id }} is offline"
+          description: "Device at {{ $labels.location }} has been offline for 5 minutes"
+
+      # Alert khi có nhiều alerts trong thời gian ngắn
+      - alert: MultipleFireAlerts
+        expr: sum(increase(fire_alerts_total[10m])) > 5
+        for: 0m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Multiple fire alerts detected"
+          description: "{{ $value }} alerts in the last 10 minutes"

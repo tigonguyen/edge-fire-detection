@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
       - name: alertmanager
-        image: fire-alertmanager:latest
+        image: edge-fire-alertmanager:latest
         imagePullPolicy: Never
         env:
         - name: TELEGRAM_BOT_TOKEN

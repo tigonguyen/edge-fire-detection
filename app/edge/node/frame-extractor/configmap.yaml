@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: frame-sources-node
+  name: edge-fire-sources
   namespace: default
 data:
   sources.json: |
