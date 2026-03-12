@@ -16,7 +16,7 @@ from PIL import Image
 import timm
 
 # Config
-MQTT_BROKER = os.getenv("MQTT_BROKER", "mqtt-broker-binhphuoc.default.svc")
+MQTT_BROKER = os.getenv("MQTT_BROKER", "mqtt-broker-node.default.svc")
 MQTT_PORT = int(os.getenv("MQTT_PORT", "1883"))
 MODEL_PATH = os.getenv("MODEL_PATH", "/model/fire_detection_best.pth")
 CONFIDENCE_THRESHOLD = float(os.getenv("CONFIDENCE_THRESHOLD", "0.7"))

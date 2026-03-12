@@ -6,7 +6,7 @@ import paho.mqtt.client as mqtt
 from paho.mqtt.client import CallbackAPIVersion
 
 # Env config
-MQTT_BROKER = os.getenv("MQTT_BROKER", "mqtt-broker-binhphuoc.default.svc")
+MQTT_BROKER = os.getenv("MQTT_BROKER", "mqtt-broker-node.default.svc")
 MQTT_PORT = int(os.getenv("MQTT_PORT", "1883"))
 VIDEO_DIR = os.getenv("VIDEO_DIR", "/videos") # Directory containing mp4 videos
 TOPIC = "frames/test_cam_1"

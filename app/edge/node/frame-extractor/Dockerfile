@@ -11,7 +11,7 @@ WORKDIR /app
 RUN pip install --no-cache-dir paho-mqtt==2.1.0 opencv-python-headless
 
 # Copy application code
-COPY app/edge/binhphuoc/frame-extractor/extractor.py .
+COPY app/edge/node/frame-extractor/extractor.py .
 
 # Copy video files directly into the image
 RUN mkdir -p /videos
@@ -19,7 +19,7 @@ COPY videos/*.mp4 /videos/
 
 # Configure environment variables
 ENV PYTHONUNBUFFERED=1
-ENV MQTT_BROKER="mqtt-broker-binhphuoc.default.svc"
+ENV MQTT_BROKER="mqtt-broker-node.default.svc"
 ENV MQTT_PORT="1883"
 ENV VIDEO_DIR="/videos"
 ENV FPS="2"

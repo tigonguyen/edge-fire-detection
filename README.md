@@ -120,7 +120,7 @@ The pipeline relies on custom Python applications. You must build these images i
 
 ```bash
 # Build the Frame Extractor Image
-cd app/edge/binhphuoc/frame-extractor
+cd app/edge/node/frame-extractor
 docker build -t fire-extractor-python:v2 .
 
 # Build the AI Inference Image
@@ -139,14 +139,14 @@ Deploy the customized Kubernetes Manifests to spin up the entire pipeline.
 cd ../../../.. # Return to project root
 
 # Spin up internal MQTT
-kubectl apply -f app/edge/binhphuoc/mqtt/
+kubectl apply -f app/edge/node/mqtt/
 
 # Spin up Cloud Gateway
-kubectl apply -f app/edge/binhphuoc/exporter/
+kubectl apply -f app/edge/node/exporter/
 
 # Spin up AI Engine & Video Extractor (Order matters for Subscriptions!)
-kubectl apply -f app/edge/binhphuoc/inference/
-kubectl apply -f app/edge/binhphuoc/frame-extractor/
+kubectl apply -f app/edge/node/inference/
+kubectl apply -f app/edge/node/frame-extractor/
 ```
 
 ### 4. Live Verification
@@ -154,7 +154,7 @@ kubectl apply -f app/edge/binhphuoc/frame-extractor/
 Wait approximately 30-45 seconds for the `EfficientNet` model to bootstrap. Then, observe the Edge AI telemetry in real-time:
 
 ```bash
-kubectl logs -l app=inference-binhphuoc -f
+kubectl logs -l app=inference-node -f
 ```
 
 *(Expected output showing parallel regional evaluation)*

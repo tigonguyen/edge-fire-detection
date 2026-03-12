@@ -1,12 +1,12 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: frame-extractor-binhphuoc
+  name: frame-extractor-node
   namespace: default
   labels:
     app: frame-extractor
     tier: edge
-    location: binhphuoc
+    location: node
 spec:
   replicas: 1
   selector:
@@ -17,7 +17,7 @@ spec:
       labels:
         app: frame-extractor
         tier: edge
-        location: binhphuoc
+        location: node
     spec:
       containers:
         - name: extractor
@@ -25,7 +25,7 @@ spec:
           imagePullPolicy: Never
           env:
             - name: MQTT_BROKER
-              value: mqtt-broker-binhphuoc.default.svc
+              value: mqtt-broker-node.default.svc
             - name: MQTT_PORT
               value: "1883"
             - name: VIDEO_DIR

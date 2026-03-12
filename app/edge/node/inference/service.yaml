@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: inference-binhphuoc
+  name: inference-node
   namespace: default
   labels:
     app: inference
@@ -9,7 +9,7 @@ metadata:
 spec:
   selector:
     app: inference
-    location: binhphuoc
+    location: node
   ports:
     - port: 9090
       targetPort: 9090

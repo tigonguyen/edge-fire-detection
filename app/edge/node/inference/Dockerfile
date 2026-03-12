@@ -18,7 +18,7 @@ RUN pip install --no-cache-dir \
     "Pillow"
 
 # Copy application code
-COPY app/edge/binhphuoc/inference/inference.py .
+COPY app/edge/node/inference/inference.py .
 
 # Mount the static PyTorch model
 RUN mkdir -p /model
@@ -26,7 +26,7 @@ COPY fire_detection_best.pth /model/
 
 # Configure
 ENV PYTHONUNBUFFERED=1
-ENV MQTT_BROKER="mqtt-broker-binhphuoc.default.svc"
+ENV MQTT_BROKER="mqtt-broker-node.default.svc"
 ENV MQTT_PORT="1883"
 ENV MODEL_PATH="/model/fire_detection_best.pth"
 

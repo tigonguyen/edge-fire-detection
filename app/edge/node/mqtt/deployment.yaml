@@ -1,12 +1,12 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: mqtt-broker-binhphuoc
+  name: mqtt-broker-node
   namespace: default
   labels:
     app: mqtt-broker
     tier: edge
-    location: binhphuoc
+    location: node
 spec:
   replicas: 1
   selector:
@@ -17,7 +17,7 @@ spec:
       labels:
         app: mqtt-broker
         tier: edge
-        location: binhphuoc
+        location: node
     spec:
       containers:
         - name: mosquitto

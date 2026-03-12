@@ -1,19 +1,19 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: exporter-binhphuoc
+  name: exporter-node
   namespace: default
   labels:
-    app: exporter-binhphuoc
+    app: exporter-node
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: exporter-binhphuoc
+      app: exporter-node
   template:
     metadata:
       labels:
-        app: exporter-binhphuoc
+        app: exporter-node
       annotations:
         prometheus.io/scrape: "true"
         prometheus.io/port: "8000"
@@ -24,7 +24,7 @@ spec:
         imagePullPolicy: Never
         env:
         - name: MQTT_BROKER
-          value: "mqtt-broker-binhphuoc.default.svc"
+          value: "mqtt-broker-node.default.svc"
         - name: MQTT_PORT
           value: "1883"
         - name: PYTHONUNBUFFERED
@@ -40,7 +40,7 @@ spec:
           value: "-5164746257"
         # Grafana will load the images from this cluster IP domain
         - name: IMAGE_BASE_URL
-          value: "http://exporter-binhphuoc.default.svc:8080/images"
+          value: "http://exporter-node.default.svc:8080/images"
         ports:
         - containerPort: 8000
         volumeMounts:
@@ -61,12 +61,12 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: exporter-binhphuoc
+  name: exporter-node
   namespace: default
 spec:
   type: ClusterIP
   selector:
-    app: exporter-binhphuoc
+    app: exporter-node
   ports:
   - name: metrics
     port: 8000

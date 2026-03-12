@@ -1,12 +1,12 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: inference-binhphuoc
+  name: inference-node
   namespace: default
   labels:
     app: inference
     tier: edge
-    location: binhphuoc
+    location: node
 spec:
   replicas: 3
   selector:
@@ -17,7 +17,7 @@ spec:
       labels:
         app: inference
         tier: edge
-        location: binhphuoc
+        location: node
     spec:
 
       containers:
@@ -26,7 +26,7 @@ spec:
           imagePullPolicy: Never
           env:
             - name: MQTT_BROKER
-              value: mqtt-broker-binhphuoc.default.svc
+              value: mqtt-broker-node.default.svc
             - name: MQTT_PORT
               value: "1883"
             - name: INTERVAL_SECONDS
