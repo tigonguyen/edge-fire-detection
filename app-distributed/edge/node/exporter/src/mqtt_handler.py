@@ -174,13 +174,15 @@ class MQTTHandler:
 
     def connect(self):
         """Connect to MQTT broker"""
-        try:
-            self.client.connect(self.broker, self.port, keepalive=60)
-            self.client.loop_start()
-            print(f"Connecting to MQTT broker: {self.broker}:{self.port}")
-        except Exception as e:
-            print(f"Failed to connect to MQTT: {e}")
-            raise
+        while True:
+            try:
+                self.client.connect(self.broker, self.port, keepalive=60)
+                self.client.loop_start()
+                print(f"Connecting to MQTT broker: {self.broker}:{self.port}")
+                break
+            except Exception as e:
+                print(f"Failed to connect to MQTT: {e}. Retrying in 5 seconds...")
+                time.sleep(5)
 
     def disconnect(self):
         """Disconnect from MQTT broker"""
