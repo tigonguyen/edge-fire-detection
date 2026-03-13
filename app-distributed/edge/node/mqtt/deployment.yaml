@@ -27,9 +27,13 @@ spec:
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 1883
+              hostPort: 1883
               name: mqtt
+              protocol: TCP
             - containerPort: 9001
+              hostPort: 9001
               name: websockets
+              protocol: TCP
           volumeMounts:
             - name: edge-fire-mqtt-data
               mountPath: /mosquitto/data
