@@ -46,6 +46,8 @@ spec:
     spec:
       nodeSelector:
         kubernetes.io/arch: amd64
+      tolerations:
+        - operator: "Exists"
       serviceAccountName: prometheus
       containers:
       - name: prometheus
