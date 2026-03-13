@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: edge-fire-mqtt
+  namespace: default
+  labels:
+    app: mqtt-broker
+    tier: edge
+    location: node
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mqtt-broker
+  template:
+    metadata:
+      labels:
+        app: mqtt-broker
+        tier: edge
+        location: node
+    spec:
+      nodeSelector:
+        kubernetes.io/arch: arm64
+      containers:
+        - name: edge-fire-mqtt
+          image: eclipse-mosquitto:2
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 1883
+              name: mqtt
+            - containerPort: 9001
+              name: websockets
+          volumeMounts:
+            - name: edge-fire-mqtt-data
+              mountPath: /mosquitto/data
+            - name: edge-fire-mqtt-log
+              mountPath: /mosquitto/log
+          resources:
+            limits:
+              memory: 128Mi
+              cpu: 200m
+            requests:
+              memory: 64Mi
+              cpu: 50m
+      volumes:
+        - name: edge-fire-mqtt-data
+          emptyDir: {}
+        - name: edge-fire-mqtt-log
+          emptyDir: {}

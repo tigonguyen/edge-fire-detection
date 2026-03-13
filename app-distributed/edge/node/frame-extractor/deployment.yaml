@@ -1,0 +1,45 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: edge-fire-extractor
+  namespace: default
+  labels:
+    app: frame-extractor
+    tier: edge
+    location: node
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: frame-extractor
+  template:
+    metadata:
+      labels:
+        app: frame-extractor
+        tier: edge
+        location: node
+    spec:
+      nodeSelector:
+        kubernetes.io/arch: arm64
+      containers:
+        - name: edge-fire-extractor
+          image: edge-fire-extractor:latest
+          imagePullPolicy: Never
+          env:
+            - name: MQTT_BROKER
+              value: edge-fire-mqtt.default.svc
+            - name: MQTT_PORT
+              value: "1883"
+            - name: VIDEO_DIR
+              value: "/videos"
+            - name: FPS
+              value: "2"
+            - name: PYTHONUNBUFFERED
+              value: "1"
+          resources:
+            limits:
+              memory: 256Mi
+              cpu: "500m"
+            requests:
+              memory: 128Mi
+              cpu: "250m"

@@ -1,0 +1,78 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: edge-fire-exporter
+  namespace: default
+  labels:
+    app: edge-fire-exporter
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: edge-fire-exporter
+  template:
+    metadata:
+      labels:
+        app: edge-fire-exporter
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8000"
+    spec:
+      nodeSelector:
+        kubernetes.io/arch: arm64
+      containers:
+      - name: edge-fire-exporter
+        image: edge-fire-exporter:latest
+        imagePullPolicy: Never
+        env:
+        - name: MQTT_BROKER
+          value: "edge-fire-mqtt.default.svc"
+        - name: MQTT_PORT
+          value: "1883"
+        - name: PYTHONUNBUFFERED
+          value: "1"
+        - name: SIMULATE_FIRE
+          value: "false"
+        - name: ALERT_COOLDOWN_SECONDS
+          value: "30"
+        # Dummy values to prevent crashes if Telegram alerts are enabled in the Python code
+        - name: TELEGRAM_BOT_TOKEN
+          value: "8696341608:AAFc0dNq_FDS-_7IeyZA8x8UIollLf0tugw"
+        - name: TELEGRAM_CHAT_ID
+          value: "-5164746257"
+        # Grafana will load the images from this cluster IP domain
+        - name: IMAGE_BASE_URL
+          value: "http://edge-fire-exporter.default.svc:8080/images"
+        ports:
+        - containerPort: 8000
+        volumeMounts:
+        - name: images-volume
+          mountPath: /app/images
+      - name: edge-fire-nginx
+        image: edge-fire-nginx:latest
+        imagePullPolicy: Never
+        ports:
+        - containerPort: 80
+        volumeMounts:
+        - name: images-volume
+          mountPath: /usr/share/nginx/html/images
+      volumes:
+      - name: images-volume
+        emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: edge-fire-exporter
+  namespace: default
+spec:
+  type: ClusterIP
+  selector:
+    app: edge-fire-exporter
+  ports:
+  - name: metrics
+    port: 8000
+    targetPort: 8000
+  - name: images
+    port: 8080
+    targetPort: 80

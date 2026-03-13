@@ -1,0 +1,43 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: edge-fire-inference
+  namespace: default
+  labels:
+    app: inference
+    tier: edge
+    location: node
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: inference
+  template:
+    metadata:
+      labels:
+        app: inference
+        tier: edge
+        location: node
+    spec:
+      nodeSelector:
+        kubernetes.io/arch: arm64
+      containers:
+        - name: edge-fire-inference
+          image: edge-fire-inference:latest
+          imagePullPolicy: Never
+          env:
+            - name: MQTT_BROKER
+              value: edge-fire-mqtt.default.svc
+            - name: MQTT_PORT
+              value: "1883"
+            - name: INTERVAL_SECONDS
+              value: "30"
+            - name: PYTHONUNBUFFERED
+              value: "1"
+          resources:
+            limits:
+              memory: 1024Mi
+              cpu: "1000m"
+            requests:
+              memory: 512Mi
+              cpu: "150m"

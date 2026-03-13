@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: edge-fire-sources
+  namespace: default
+data:
+  sources.json: |
+    [
+      {
+        "id": "cam-node-01",
+        "file": "node-fire.mp4",
+        "url": "https://storage.googleapis.com/edge-fire-cameras/node/node-fire.mp4",
+        "lat": 11.75,
+        "lon": 106.90,
+        "description": "Binh Phuoc forest area"
+      }
+    ]

@@ -15,6 +15,9 @@ model/data/
 *.mp4
 *.avi
 *.mov
+
+# MUST KEEP FOR DISTRIBUTED DEPLOYMENT
+# MUST KEEP FOR DISTRIBUTED DEPLOYMENT
 *.mkv
 *.flv
 *.wmv
@@ -25,6 +28,9 @@ experiments/knowledge_distillation/models/*
 # Model checkpoints and weights
 *.pth
 *.pt
+# MUST KEEP MULTI-ARCH CHOSEN MODEL
+# MUST KEEP MULTI-ARCH CHOSEN MODEL
+
 *.ckpt
 *.h5
 *.pb

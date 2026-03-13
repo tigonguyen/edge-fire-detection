@@ -1,0 +1,82 @@
+# alertmanager/alertmanager.yml
+#
+# Strategy:
+# - Initial notification with photo is sent by exporter/notification.py (immediate)
+# - Alertmanager sends REMINDERS only if alert is not resolved after 5 minutes
+# - This avoids duplicate notifications while supporting photos
+#
+global:
+  # Giảm resolve_timeout để alert được đánh dấu resolved nhanh hơn
+  # Khi metric biến mất khỏi Prometheus, sau 2 phút Alertmanager sẽ coi là resolved
+  resolve_timeout: 2m
+  telegram_api_url: "https://api.telegram.org"
+
+route:
+  group_by: ['alertname', 'device_id']
+  # Wait 5 minutes before sending first notification (reminder)
+  # Initial notification is sent by exporter directly with photo
+  group_wait: 15m
+  group_interval: 10m
+  repeat_interval: 30m
+  receiver: 'telegram-reminder'
+
+  routes:
+    # Critical alerts - remind after 5 minutes if not resolved
+    - match:
+        severity: critical
+      receiver: 'telegram-reminder'
+      group_wait: 15m
+      repeat_interval: 15m
+
+    # Warning alerts - remind after 10 minutes
+    - match:
+        severity: warning
+      receiver: 'telegram-reminder'
+      group_wait: 15m
+      repeat_interval: 30m
+
+receivers:
+  - name: 'telegram-reminder'
+    telegram_configs:
+      - bot_token: '${TELEGRAM_BOT_TOKEN}'
+        chat_id: ${TELEGRAM_CHAT_ID}
+        parse_mode: 'HTML'
+        # Gửi notification khi alert được resolved để xác nhận
+        send_resolved: true
+        message: |
+          {{ if eq .Status "firing" }}
+          {{ range .Alerts.Firing }}
+          ⏰ <b>NHẮC NHỞ: CẢNH BÁO CHÁY CHƯA ĐƯỢC XỬ LÝ!</b>
+
+          🔥 Alert vẫn đang active
+
+          📍 <b>Vị trí:</b> {{ .Labels.location }}
+          🌍 <b>Tọa độ:</b> <a href="https://maps.google.com/?q={{ .Labels.latitude }},{{ .Labels.longitude }}">{{ .Labels.latitude }}, {{ .Labels.longitude }}</a>
+          📊 <b>Độ tin cậy:</b> {{ .Annotations.confidence }}
+          🔍 <b>Loại:</b> {{ .Labels.class }}
+          ⏰ <b>Phát hiện lúc:</b> {{ .StartsAt.Format "2006-01-02 15:04:05" }}
+
+          🆔 Alert ID: <code>{{ .Labels.alert_id }}</code>
+          📡 Device: <code>{{ .Labels.device_id }}</code>
+
+          ⚠️ <b>Vui lòng kiểm tra và xác nhận xử lý!</b>
+          {{ end }}
+          {{ else }}
+          {{ range .Alerts.Resolved }}
+          ✅ <b>ALERT ĐÃ ĐƯỢC XỬ LÝ (Alertmanager)</b>
+
+          📍 <b>Vị trí:</b> {{ .Labels.location }}
+          🆔 Alert ID: <code>{{ .Labels.alert_id }}</code>
+          ⏰ <b>Resolved lúc:</b> {{ .EndsAt.Format "2006-01-02 15:04:05" }}
+
+          ✅ Không còn nhận reminder cho alert này.
+          {{ end }}
+          {{ end }}
+
+# Inhibit rules
+inhibit_rules:
+  - source_match:
+      severity: 'critical'
+    target_match:
+      severity: 'warning'
+    equal: ['alertname', 'device_id']

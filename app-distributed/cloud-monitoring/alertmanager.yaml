@@ -1,0 +1,41 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: alertmanager
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: alertmanager
+  template:
+    metadata:
+      labels:
+        app: alertmanager
+    spec:
+      nodeSelector:
+        kubernetes.io/arch: amd64
+      containers:
+      - name: alertmanager
+        image: edge-fire-alertmanager:latest
+        imagePullPolicy: Never
+        env:
+        - name: TELEGRAM_BOT_TOKEN
+          value: "8696341608:AAFc0dNq_FDS-_7IeyZA8x8UIollLf0tugw"
+        - name: TELEGRAM_CHAT_ID
+          value: "-5164746257"
+        ports:
+        - containerPort: 9093
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: alertmanager
+  namespace: default
+spec:
+  type: ClusterIP
+  ports:
+  - port: 9093
+    targetPort: 9093
+  selector:
+    app: alertmanager
