@@ -27,7 +27,7 @@ spec:
           imagePullPolicy: Never
           env:
             - name: MQTT_BROKER
-              value: edge-fire-mqtt.default.svc
+              value: edge-fire-mqtt
             - name: MQTT_PORT
               value: "1883"
             - name: INTERVAL_SECONDS
