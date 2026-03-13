@@ -27,8 +27,8 @@ spec:
         - name: grafana-datasource
           mountPath: /etc/grafana/provisioning/datasources
         - name: grafana-dashboards-config
-          mountPath: /etc/grafana/provisioning/dashboards/dashboard.yaml
-          subPath: dashboard.yaml
+          mountPath: /etc/grafana/provisioning/dashboards/dashboard.yml
+          subPath: dashboard.yml
         - name: grafana-dashboard-json
           mountPath: /etc/grafana/provisioning/dashboards/fire-detection.json
           subPath: fire-detection.json
