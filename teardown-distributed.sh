@@ -8,6 +8,9 @@ echo "☁️  Removing Cloud Monitoring Stack (Master/AMD64)..."
 echo "----------------------------------------"
 kubectl delete -f app-distributed/cloud-monitoring/prometheus.yaml --ignore-not-found
 kubectl delete -f app-distributed/cloud-monitoring/alertmanager.yaml --ignore-not-found
+kubectl delete -f app-distributed/cloud-monitoring/grafana-datasource-cm.yaml --ignore-not-found
+kubectl delete -f app-distributed/cloud-monitoring/grafana-dashboards-config-cm.yaml --ignore-not-found
+kubectl delete -f app-distributed/cloud-monitoring/grafana-dashboard-json-cm.yaml --ignore-not-found
 kubectl delete -f app-distributed/cloud-monitoring/grafana.yaml --ignore-not-found
 
 echo "----------------------------------------"
