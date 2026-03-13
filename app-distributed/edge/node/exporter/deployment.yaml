@@ -20,6 +20,7 @@ spec:
     spec:
       nodeSelector:
         kubernetes.io/arch: arm64
+      dnsPolicy: Default
       containers:
       - name: edge-fire-exporter
         image: edge-fire-exporter:latest
