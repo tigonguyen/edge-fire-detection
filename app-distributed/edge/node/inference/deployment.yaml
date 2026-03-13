@@ -36,6 +36,8 @@ spec:
               value: "30"
             - name: PYTHONUNBUFFERED
               value: "1"
+            - name: SIMULATE_FIRE
+              value: "true"
           resources:
             limits:
               memory: 1024Mi
