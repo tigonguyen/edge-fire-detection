@@ -22,12 +22,12 @@ COPY app/edge/node/inference/inference.py .
 
 # Mount the static PyTorch model
 RUN mkdir -p /model
-COPY fire_detection_best.pth /model/
+COPY trainning/models/fire_detection_b0_best.pth /model/
 
 # Configure
 ENV PYTHONUNBUFFERED=1
 ENV MQTT_BROKER="edge-fire-mqtt.default.svc"
 ENV MQTT_PORT="1883"
-ENV MODEL_PATH="/model/fire_detection_best.pth"
+ENV MODEL_PATH="/model/fire_detection_b0_best.pth"
 
 CMD ["python", "inference.py"]

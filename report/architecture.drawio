@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxfile host="Electron" modified="2024" agent="Mozilla" version="21" type="device">
+  <diagram id="fire_detection" name="Architecture">
+    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" background="#ffffff" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        
+        <!-- Swimlanes -->
+        <mxCell id="EdgeZone" value="Edge Node" style="swimlane;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontStyle=1;startSize=30;shadow=0;" vertex="1" parent="1">
+          <mxGeometry x="20" y="40" width="500" height="460" as="geometry" />
+        </mxCell>
+        <mxCell id="CloudZone" value="Cloud Monitoring" style="swimlane;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontStyle=1;startSize=30;shadow=0;" vertex="1" parent="1">
+          <mxGeometry x="560" y="40" width="360" height="460" as="geometry" />
+        </mxCell>
+
+        <!-- Edge Nodes -->
+        <mxCell id="FrameExt" value="Frame Extractor&#10;(C++/Python)" style="shape=label;image=https://api.iconify.design/logos:python.svg;imageWidth=45;imageHeight=45;imageAlign=center;imageVerticalAlign=top;spacingTop=50;align=center;verticalAlign=top;rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#cccccc;shadow=1;fontStyle=1;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="50" y="90" width="120" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="Inference" value="Inference Engine&#10;(PyTorch/ONNX)" style="shape=label;image=https://api.iconify.design/logos:pytorch-icon.svg;imageWidth=45;imageHeight=45;imageAlign=center;imageVerticalAlign=top;spacingTop=50;align=center;verticalAlign=top;rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#cccccc;shadow=1;fontStyle=1;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="50" y="360" width="120" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="MQTTBroker" value="Mosquitto Broker&#10;:1883" style="shape=label;image=https://api.iconify.design/logos:mqtt.svg;imageWidth=45;imageHeight=45;imageAlign=center;imageVerticalAlign=top;spacingTop=50;align=center;verticalAlign=top;rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#cccccc;shadow=1;fontStyle=1;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="200" y="225" width="120" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="Exporter" value="FastAPI Exporter&#10;:8080" style="shape=label;image=https://api.iconify.design/logos:fastapi-icon.svg;imageWidth=45;imageHeight=45;imageAlign=center;imageVerticalAlign=top;spacingTop=50;align=center;verticalAlign=top;rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#cccccc;shadow=1;fontStyle=1;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="370" y="225" width="120" height="90" as="geometry" />
+        </mxCell>
+
+        <!-- Cloud Nodes -->
+        <mxCell id="Prometheus" value="Prometheus TSDB&#10;:9090" style="shape=label;image=https://api.iconify.design/logos:prometheus.svg;imageWidth=45;imageHeight=45;imageAlign=center;imageVerticalAlign=top;spacingTop=50;align=center;verticalAlign=top;rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#cccccc;shadow=1;fontStyle=1;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="580" y="225" width="120" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="Alertmgr" value="Alertmanager&#10;:9093" style="shape=label;image=https://api.iconify.design/logos:prometheus.svg;imageWidth=45;imageHeight=45;imageAlign=center;imageVerticalAlign=top;spacingTop=50;align=center;verticalAlign=top;rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#cccccc;shadow=1;fontStyle=1;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="760" y="90" width="120" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="Grafana" value="Grafana Dashboard&#10;:3000" style="shape=label;image=https://api.iconify.design/logos:grafana.svg;imageWidth=45;imageHeight=45;imageAlign=center;imageVerticalAlign=top;spacingTop=50;align=center;verticalAlign=top;rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#cccccc;shadow=1;fontStyle=1;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="760" y="360" width="120" height="90" as="geometry" />
+        </mxCell>
+
+        <!-- External -->
+        <mxCell id="Teleg" value="Telegram Bot" style="shape=label;image=https://api.iconify.design/logos:telegram.svg;imageWidth=45;imageHeight=45;imageAlign=center;imageVerticalAlign=top;spacingTop=50;align=center;verticalAlign=top;rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#cccccc;shadow=1;fontStyle=1;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="980" y="90" width="120" height="90" as="geometry" />
+        </mxCell>
+
+        <!-- Edges -->
+        <mxCell id="e1" value="Pub: Frames" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=11;strokeColor=#1BA1E2;strokeWidth=2;" edge="1" parent="1" source="FrameExt" target="MQTTBroker">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e2" value="Sub: Frames" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=11;strokeColor=#1BA1E2;strokeWidth=2;" edge="1" parent="1" source="MQTTBroker" target="Inference">
+           <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e3" value="Pub: Alerts" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=11;strokeColor=#E51400;strokeWidth=2;" edge="1" parent="1" source="Inference" target="MQTTBroker">
+           <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e4" value="Sub: Alerts" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=11;strokeColor=#E51400;strokeWidth=2;" edge="1" parent="1" source="MQTTBroker" target="Exporter">
+           <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e5" value="HTTP Scrape /metrics" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=11;strokeColor=#60A917;strokeWidth=2;" edge="1" parent="1" source="Prometheus" target="Exporter">
+           <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e6" value="Rule Matches" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=11;strokeColor=#E51400;strokeWidth=2;" edge="1" parent="1" source="Prometheus" target="Alertmgr">
+           <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e7" value="PromQL Queries" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=11;strokeColor=#60A917;strokeWidth=2;" edge="1" parent="1" source="Grafana" target="Prometheus">
+           <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e8" value="Webhook" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=11;strokeColor=#1BA1E2;strokeWidth=2;" edge="1" parent="1" source="Alertmgr" target="Teleg">
+           <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
