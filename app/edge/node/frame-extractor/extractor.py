@@ -73,11 +73,13 @@ def main():
     client = mqtt.Client(CallbackAPIVersion.VERSION2)
     client.on_connect = on_connect
     
-    try:
-        client.connect(MQTT_BROKER, MQTT_PORT, 60)
-    except Exception as e:
-        print(f"[ERROR] Could not connect to MQTT broker: {e}")
-        return
+    while True:
+        try:
+            client.connect(MQTT_BROKER, MQTT_PORT, 60)
+            break
+        except Exception as e:
+            print(f"[ERROR] Could not connect to MQTT broker: {e}. Retrying in 5 seconds...")
+            time.sleep(5)
 
     client.loop_start()
     delay = 1.0 / FPS

@@ -185,6 +185,15 @@ def main():
     # Create model (EfficientNet-B0)
     print(f"\n🤖 Creating EfficientNet-B0 model...")
     model = timm.create_model('efficientnet_b0', pretrained=True, num_classes=num_classes)
+    
+    # FREEZE BACKBONE (Transfer Learning Mode)
+    for param in model.parameters():
+        param.requires_grad = False
+    
+    # UNFREEZE CLASSIFIER HEAD
+    for param in model.get_classifier().parameters():
+        param.requires_grad = True
+
     model = model.to(device)
     
     total_params = sum(p.numel() for p in model.parameters())

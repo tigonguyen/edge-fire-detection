@@ -154,11 +154,13 @@ def main():
     client.on_connect = on_connect
     client.on_message = on_message
 
-    try:
-        client.connect(MQTT_BROKER, MQTT_PORT)
-    except Exception as e:
-        print(f"[ERROR] Failed to connect to broker: {e}")
-        return
+    while True:
+        try:
+            client.connect(MQTT_BROKER, MQTT_PORT)
+            break
+        except Exception as e:
+            print(f"[ERROR] Failed to connect to broker: {e}. Retrying in 5 seconds...")
+            time.sleep(5)
 
     client.loop_forever()
 
