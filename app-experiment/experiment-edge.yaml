@@ -1,0 +1,111 @@
+---
+# EDGE SCENARIO: All components running on the M1 MacOS worker node (arm64)
+# Simulates full Edge Intelligence with minimal network latency and decoupled WAN.
+
+# 1. Experiment MQTT Broker (Edge)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: experiment-mqtt-edge
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: experiment-mqtt-edge
+  template:
+    metadata:
+      labels:
+        app: experiment-mqtt-edge
+    spec:
+      nodeSelector:
+        kubernetes.io/arch: arm64
+      containers:
+      - name: mosquitto
+        image: eclipse-mosquitto:2.0
+        ports:
+        - containerPort: 1883
+        command: ['mosquitto']
+        args: ['-c', '/mosquitto-no-auth.conf']
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: experiment-mqtt-edge
+  namespace: default
+spec:
+  selector:
+    app: experiment-mqtt-edge
+  ports:
+  - port: 1883
+    targetPort: 1883
+---
+# 2. Experiment Extractor (Edge)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: experiment-extractor-edge
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: experiment-extractor-edge
+  template:
+    metadata:
+      labels:
+        app: experiment-extractor-edge
+    spec:
+      nodeSelector:
+        kubernetes.io/arch: arm64
+      containers:
+      - name: extractor
+        image: experiment-extractor:latest
+        imagePullPolicy: Never
+        env:
+        - name: MQTT_BROKER
+          value: "experiment-mqtt-edge.default.svc"
+        - name: FPS
+          value: "5"
+        volumeMounts:
+        - name: video-volume
+          mountPath: /videos
+      volumes:
+      - name: video-volume
+        hostPath:
+          path: /Users/tigonguyen/tmp/test_videos
+          type: DirectoryOrCreate
+---
+# 3. Experiment Inference (Edge)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: experiment-inference-edge
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: experiment-inference-edge
+  template:
+    metadata:
+      labels:
+        app: experiment-inference-edge
+    spec:
+      nodeSelector:
+        kubernetes.io/arch: arm64
+      containers:
+      - name: inference
+        image: experiment-inference:latest
+        imagePullPolicy: Never
+        env:
+        - name: MQTT_BROKER
+          value: "experiment-mqtt-edge.default.svc"
+        volumeMounts:
+        - name: model-volume
+          mountPath: /model
+      volumes:
+      - name: model-volume
+        hostPath:
+          path: /Users/tigonguyen/Documents/DevOps/repos/personal-projects/edge-fire-detection/model
+          type: DirectoryOrCreate

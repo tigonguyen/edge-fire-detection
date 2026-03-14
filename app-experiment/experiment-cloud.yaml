@@ -1,0 +1,112 @@
+---
+# CLOUD SCENARIO: Extractor on the M1 MacOS (arm64), Inference on the GCP Master (amd64)
+# Simulates legacy Cloud AI architecture with high network latency penalty over WAN.
+
+# 1. Experiment MQTT Broker (Cloud)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: experiment-mqtt-cloud
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: experiment-mqtt-cloud
+  template:
+    metadata:
+      labels:
+        app: experiment-mqtt-cloud
+    spec:
+      nodeSelector:
+        kubernetes.io/arch: amd64
+      containers:
+      - name: mosquitto
+        image: eclipse-mosquitto:2.0
+        ports:
+        - containerPort: 1883
+        command: ['mosquitto']
+        args: ['-c', '/mosquitto-no-auth.conf']
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: experiment-mqtt-cloud
+  namespace: default
+spec:
+  selector:
+    app: experiment-mqtt-cloud
+  ports:
+  - port: 1883
+    targetPort: 1883
+---
+# 2. Experiment Extractor (Still on Edge Location)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: experiment-extractor-cloud
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: experiment-extractor-cloud
+  template:
+    metadata:
+      labels:
+        app: experiment-extractor-cloud
+    spec:
+      nodeSelector:
+        kubernetes.io/arch: arm64
+      containers:
+      - name: extractor
+        image: experiment-extractor:latest
+        imagePullPolicy: Never
+        env:
+        - name: MQTT_BROKER
+          value: "experiment-mqtt-cloud.default.svc"
+        - name: FPS
+          value: "5"
+        volumeMounts:
+        - name: video-volume
+          mountPath: /videos
+      volumes:
+      - name: video-volume
+        hostPath:
+          path: /Users/tigonguyen/tmp/test_videos
+          type: DirectoryOrCreate
+---
+# 3. Experiment Inference (Migrated to Cloud)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: experiment-inference-cloud
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: experiment-inference-cloud
+  template:
+    metadata:
+      labels:
+        app: experiment-inference-cloud
+    spec:
+      nodeSelector:
+        kubernetes.io/arch: amd64
+      containers:
+      - name: inference
+        image: experiment-inference:latest
+        imagePullPolicy: IfNotPresent
+        env:
+        - name: MQTT_BROKER
+          value: "experiment-mqtt-cloud.default.svc"
+        volumeMounts:
+        - name: model-volume
+          mountPath: /model
+      volumes:
+      - name: model-volume
+        hostPath:
+          # Assuming the model is synced to the GCP server at this location
+          path: /root/edge-fire-detection/model
+          type: DirectoryOrCreate
