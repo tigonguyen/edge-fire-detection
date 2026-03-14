@@ -2,10 +2,10 @@
 echo "Building Experiment Images for Architecture: $(uname -m)"
 
 echo "Building Extractor..."
-docker build -t experiment-extractor:latest ./app-experiment/extractor
+docker build --network host -t experiment-extractor:latest ./app-experiment/extractor
 
 echo "Building Inference..."
-docker build -t experiment-inference:latest ./app-experiment/inference
+docker build --network host -t experiment-inference:latest ./app-experiment/inference
 
 # Ensure k3s/containerd can see it if running locally on Mac
 if command -v k3s >/dev/null 2>&1; then

@@ -1,10 +1,9 @@
-FROM pytorch/pytorch:2.2.0-cuda11.8-cudnn8-runtime
+FROM python:3.9-slim
 
 WORKDIR /app
 
-# Install standard dependencies
-RUN apt-get update && apt-get install -y libglib2.0-0 libsm6 libxext6 libxrender-dev && rm -rf /var/lib/apt/lists/*
-RUN pip install --no-cache-dir opencv-python-headless paho-mqtt timm pillow numpy torchvision
+RUN pip install --no-cache-dir torch torchvision --index-url https://download.pytorch.org/whl/cpu
+RUN pip install --no-cache-dir opencv-python-headless paho-mqtt timm pillow numpy
 
 COPY inference.py /app/
 
