@@ -53,6 +53,11 @@ spec:
       - name: prometheus
         image: edge-fire-prometheus:latest
         imagePullPolicy: Never
+        env:
+        - name: EXPORTER_TARGET
+          value: "edge-fire-exporter.default.svc:8000"
+        - name: ALERTMANAGER_TARGET
+          value: "alertmanager.default.svc:9093"
         ports:
         - containerPort: 9090
 ---
